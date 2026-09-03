@@ -1,0 +1,21 @@
+{
+  "status": "success",
+  "data": [
+    {
+      "reference_time": "2023/05/01 00:00:00",
+      "wbgt_no": 11001,
+      "forecast_val": "40",
+      "forecast_time": "2023/05/01 03:00:00",
+      "flag": 0
+    },
+    {
+      "reference_time": "2023/05/01 00:00:00",
+      "wbgt_no": 11001,
+      "forecast_val": "-10",
+      "forecast_time": "2023/05/01 06:00:00",
+      "flag": 0
+    }
+  ],
+  "count": 2,
+  "errMsg": ""
+}
