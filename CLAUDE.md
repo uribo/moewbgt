@@ -6,12 +6,10 @@
 
 ## 現在の状態（最初に読む）
 
-**移行直後で、`R CMD check` は通らない。** 中身は [uribo/japan-heatstroke](https://github.com/uribo/japan-heatstroke) の `3b80b7a` からバイト単位でコピーした関数そのままで、次が未整備:
+**`R CMD check` は Status: OK**（0 errors / 0 warnings / 0 notes、2026-09-03 時点）。中身は [uribo/japan-heatstroke](https://github.com/uribo/japan-heatstroke) の `3b80b7a` からコピーした関数を出発点にしているが、以下は済んでいる: roxygen2 化と `man/` 生成、`NAMESPACE` の自動生成、`utils` の宣言。残る未整備:
 
-- `man/` が無い。`NAMESPACE` は roxygen2 生成ではなく**手書き**（先頭コメントに明記）。undocumented exports で警告が出る
-- `tests/` は `wbgt_guideline()` の境界回帰テストだけがある（testthat 3e）。他の関数は未カバー
-- roxygen コメントが 1 行も無い。`Roxygen: list(markdown = TRUE)` だけ宣言済み
-- `utils::download.file()` を `R/read_moe_wbgt.R` で名前空間なしに呼んでいるが `importFrom` が無い
+- `tests/` は `wbgt_guideline()` の境界回帰テストだけ（testthat 3e、18 assertion）。ネットワークを叩く `read_moe_alert()` / `read_moe_wbgt()` は未カバーで、季節運用のためフィクスチャ（`httptest2` / `vcr`）が要る
+- CI 未設置（`TODO.md` #3）
 - 2026 年度に追加された **WebAPI に未対応**（現行コードは CSV 直リンク前提）
 
 このパッケージの主目的は WebAPI クライアントの提供にある。API の制約（1 リクエスト 25,000 件上限、JMA 系 `pref_cd`、季節運用）は README.md の表と PROVENANCE.md に整理してある。**設計に着手する前にその 2 つを読む。**
@@ -40,10 +38,11 @@ git show 7efd1b3:R/guides.R | shasum -a 256
 ## 開発コマンド
 
 ```sh
-Rscript -e 'devtools::document()'   # man/ と NAMESPACE を生成できるようになったら
-Rscript -e 'devtools::check()'      # 現状は通らない（上記「現在の状態」）
+Rscript -e 'roxygen2::roxygenise()'   # man/ と NAMESPACE を再生成
 air format .
 ```
+
+**`roxygenise()` は、パッケージがライブラリに入っていないと `[fn()]` 形式のリンクを解決できず**「Could not resolve link to topic」を出す。先に `R CMD INSTALL` してから `R_LIBS=<lib>` 付きで走らせれば消える（実体は未インストールが原因で、記述の誤りではない）。
 
 **devtools はこの端末に入っていない。** テストは実際にインストールしてから流す。`.onLoad()` は `source()` や `load_all()` では発火しないので、memoise の確認にはインストールが要る:
 
@@ -54,14 +53,16 @@ Rscript -e 'library(moewbgt, lib.loc = "/tmp/lib"); testthat::test_dir("tests/te
 
 **R ファイル（`.R` / `.qmd`）を編集したら `air format .` を実行する。** `.claude/settings.json` の PostToolUse hook は Edit / Write ツール経由の編集にしか発火しないので、`sed` やヒアドキュメントで書き換えたときは手で走らせる。設定は `air.toml`（line-width 80）。
 
-CI は未設置。`R CMD check` が赤で始まるワークフローを置いても情報にならないため、`man/` の整備後に jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植する。
+CI は未設置。`man/` が整い `R CMD check` が Status: OK になったので、jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植できる状態にある（`TODO.md` #3）。
 
 ## 構成
 
 - `R/read_moe_wbgt.R` — 旧 CSV サービスの入口。`read_moe_wbgt()` が URL 組み立て（`moe_wbgt_request_url()`）とパース（`parse_moe_wbgt_csv()`）を束ねる
 - `R/moe_alert.R` — 熱中症警戒アラート発表実績のスクレイピング（`read_moe_alert()`）と wide → long 変換（`alert_to_long()`）
 - `R/guides.R` — WBGT 値 → 日常生活の指針（`wbgt_guideline()`）
-- `data-raw/moe_wbgt_stations.R` — 提供サービスマニュアル PDF から地点マスタを抽出する導出スクリプト。出力先は `inst/extdata/`。各ブロックの `file.exists()` ガードにより、**既にあるファイルは再実行しても上書きされない**（凍結バイトの保護はこのガードに依存している。外さない）。2020 年版の生成経路は無い（PROVENANCE 問題 3 の関連）
+- `R/moewbgt-package.R` — パッケージレベルの roxygen（`"_PACKAGE"`）と `utils::globalVariables()`。**副作用を持たせない**
+- `man/` — roxygen2 の生成物。**直接編集しない**（`roxygenise()` で再生成する）
+- `data-raw/moe_wbgt_stations.R` — 提供サービスマニュアル PDF から地点マスタを抽出する導出スクリプト。出力先は `inst/extdata/`。各ブロックの `file.exists()` ガードにより、**既にあるファイルは再実行しても上書きされない**（凍結バイトの保護はこのガードに依存している。外さない）。2020 年版の生成経路は記録されていない（PROVENANCE「元データの出自」）
 - `data-raw/survey_tokyo2020.R` — オリパラ暑熱環境測定事業の資料取得。導出パイプラインの一部ではない
 - `inst/extdata/` — 情報提供地点マスタ（`wbgt_stations*.csv`、840〜841 行）と都道府県ローマ字表（`wbgt_observe*.csv`、47 行）。**`wbgt_observe*` は実況値ではない**（名前と中身が食い違っている。PROVENANCE 問題 3）
 
@@ -88,9 +89,12 @@ CI は未設置。`R CMD check` が赤で始まるワークフローを置いて
 
 - パイプは `|>`。`Depends: R (>= 4.1.0)`
 - フォーマッタは air（上記）。変数名・列名は英語のみ、散文は日本語でよい
-- **`R/` の日本語文字列リテラルは Unicode エスケープで書く**（`"危険"` ではなく `"\u5371\u967a"` の形）。R CMD check の非 ASCII 警告を避けるため。`R/guides.R` の 4 語は変換済み。残っているのは `R/moe_alert.R:36` の `"発表回数"` だけ（同ファイルの `"\u25cf"` は元からエスケープ済み）。`R/read_moe_wbgt.R` の非 ASCII はコメントのみ。触るときに直す。`data-raw/` は `.Rbuildignore` されるので生のままでよい
+- **`R/` の日本語文字列リテラルは Unicode エスケープで書く**（`"危険"` ではなく `"\u5371\u967a"` の形）。R CMD check の非 ASCII 警告を避けるため。**現在 `R/` に生の日本語リテラルは無い**（残る非 ASCII は `R/read_moe_wbgt.R` のコメントだけで、コメントは check の対象外）。新しく足すときも同じ形で書く。`data-raw/` は `.Rbuildignore` されるので生のままでよい
+- **roxygen の散文に日本語を書かない。** `.Rd` では `\u5371\u967a` が escape として解釈されず literal に出るため、エスケープ回避と可読性が両立しない。英語で書く
+- **データマスキング／tidyselect で参照する列名は `R/moewbgt-package.R` の `utils::globalVariables()` に足す**（各関数冒頭の `col <- NULL` 方式は採らない。jpops は NULL 代入、kumagusu は globalVariables で流儀が割れているが、このパッケージは後者に寄せて 1 か所に集める）。裸の tidyselect ヘルパーは `tidyselect::contains()` のように修飾して、globalVariables では隠さない
 - テストの期待値は実装側の定数を参照せず Unicode エスケープで直書きする。実装と同じ転記ミスを共有させないため（kumagusu / jpops と同じ規約）
 - ユーザー向け関数はエクスポートし roxygen2 ドキュメントを書く。内部関数には書かない
+- **`R/moe_alert.R` の `@importFrom rvest read_html` を「`rvest::` があるから冗長」と消さない。** `.onLoad()` が `read_moe_alert` を memoise 版へ再束縛するため、インストール後の名前空間を見る R CMD check からは `rvest::` の呼び出しが見えなくなり、消すと「All declared Imports should be used」の NOTE が復活する（2026-09-03 に再束縛を外して確認済み）。理由は当該行の直上コメントにも書いてある
 - 取得処理を `purrr::safely()` や `tryCatch()` で包んで失敗を握り潰さない。fail-loud のまま保つ
 - `dplyr::select()` / `rename()` の位置指定（`dplyr::select(!2)`、`seq.int(2, ncol(df) - 1)` など）は上流 CSV のヘッダーが年度・種別で揺れるための意図的なもの。列名ベースに「直さない」
 

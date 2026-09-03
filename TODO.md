@@ -12,19 +12,24 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 
 **戻さないこと**: `SHA256SUMS` にコード行を再追加しない（`CLAUDE.md` / `AGENTS.md` にも明記）。
 
-## 2. `man/` が無く `R CMD check` が通らない
+## 2. roxygen2 化と `man/` 生成
 
-roxygen コメントが 1 行も無く、`NAMESPACE` は手書き。exports 7 個が undocumented。`utils::download.file()` の `importFrom` も無い（`utils` を `Imports` に足して `utils::` で修飾する。この項目でまとめて掃除する）。
+**扱い: 完了（2026-09-03）** — `R CMD check` が **Status: OK**（0 errors / 0 warnings / 0 notes）になった。
 
-`tests/` は #5 の対応で `wbgt_guideline()` の境界回帰テストだけ入った（testthat 3e、`Config/testthat/edition: 3`）。他の関数は未カバーで、特にネットワークを叩く `read_moe_alert()` / `read_moe_wbgt()` は季節運用のためフィクスチャ（`httptest2` / `vcr`）が要る（#4 の論点と共通）。
+- 7 つの export すべてに roxygen コメントを書き、`man/*.Rd` 8 件を生成。`NAMESPACE` は手書きを削除して roxygen2 生成に置き換えた
+- `utils` を `Imports` に足し、`download.file()` を `utils::` で修飾。`read_moe_wbgt()` 内の未使用ローカル `domain_url` を削除
+- 裸の `contains("/")` を `tidyselect::contains("/")` に修飾
+- データマスキングの列名 9 個を `R/moewbgt-package.R` の `utils::globalVariables()` に集約
+- 非 ASCII 警告の原因だった `"発表回数"` を Unicode エスケープに変換
+- `@importFrom rvest read_html` を追加。**冗長に見えるが必要**: `.onLoad()` の再束縛によりインストール後の名前空間から `rvest::` が見えず、無いと「All declared Imports should be used」の NOTE が出る（再束縛を外して確認済み）
 
-**扱い**: 次に回す（WebAPI クライアント設計の前に着手）
+残るテスト整備は #3 ではなくこの先の課題として: ネットワークを叩く `read_moe_alert()` / `read_moe_wbgt()` は季節運用のためフィクスチャ（`httptest2` / `vcr`）が要り、#4 の論点と共通なのでそちらで扱う。
 
 ## 3. CI 未設置
 
-jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植する。`air-format` は今すぐ緑になるが、`R-CMD-check` は `man/` 整備までは赤。片方だけ先に置くと「CI は緑」という誤った印象を与えるので、2 つまとめて #2 の後に入れる。
+jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植する。#2 が完了して `R CMD check` が Status: OK になったので、**両方とも緑で始められる**（当初「`R-CMD-check` は赤で始まる」と書いていた前提は解消した）。
 
-**扱い**: 次に回す（#2 の後）
+**扱い**: 着手可。次に行う作業
 
 ## 4. WebAPI クライアント（本命）
 
@@ -36,7 +41,7 @@ jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植する。`a
 - 公開出力の単位（PROVENANCE 問題 4）。`wbgt_WO` は小数、`forecast_val` は ×10 に見える
 - `wbgt_WI`（データ品質情報 0〜4）は欠測補完の有無を示すので落とさない
 
-**扱い**: 次に回す（#1〜#3 の後）
+**扱い**: 次に回す（#3 の後）
 
 ## 5. 引き継いだ既知の問題 7 件
 
@@ -51,7 +56,7 @@ jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植する。`a
 - **3**（`wbgt_observe*.csv` の改名）— **判断済み: 改名しない（現状維持、2026-09-03、ユーザー判断）**。公開リポジトリの破壊的変更にあたること、japan-heatstroke 側でも同じ理由で保留されていること（同 repo `TODO.md` 項目 1）、そして API 移行でファイルごと不要になる可能性が高いことから、改名のコストを払う前に前提が変わりうる。**名前と中身の食い違いという事実自体は残る**ので、`README.md`・`PROVENANCE.md`・`CLAUDE.md` の 3 か所で明示する現状の記述を薄めない。再検討するとすれば #4（WebAPI クライアント）で、このファイルが不要と確定したときに削除の可否として扱う
 - **4**（単位の規約）— #4（WebAPI クライアント）の設計時に決める。先に決めても API のレスポンスを見ないと確定しない
 - **5**（パス体系が 2026 年度も同一か）— 外部アクセスを伴う。#6 と併せて確認する
-- **6**（`man/` が無い）— #2 と同一の項目。そちらで扱う
+- **6**（`man/` が無い）— #2 と同一の項目。**そちらで解消済み（2026-09-03）**
 
 **扱い**: 1・2・7 は完了、3 は判断済み（改名しない）。残る 4・5・6 は他項目に統合済みなので、この項目に未処理は無い
 
@@ -63,11 +68,11 @@ jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植する。`a
 
 **扱い**: 次に回す（#4 の設計時にまとめて確認する）
 
-## 7. provenance の到達性（要判断・ユーザー、別リポジトリ）
+## 7. provenance の到達性
 
-#1 の調査で判明した 2 件。moewbgt 自身のバイトは `7efd1b3` が push 済みなので失われないが、周辺に穴がある。
+#1 の調査で判明した 2 件のうち、1 件目は解消した。
 
-- **コピー元 `3b80b7a` がこの端末にしか無い**。`uribo/japan-heatstroke` の GitHub 側は最終 push が 2025-01-23 で、`3b80b7a` も分割を記録した `c3089c0` も未 push。「japan-heatstroke 由来である」ことの証明が端末 1 台に依存している。**japan-heatstroke を push すれば解消する**（別リポジトリなのでユーザー判断）
+- ~~**コピー元 `3b80b7a` がこの端末にしか無い**~~ — **解消（2026-09-03）**。japan-heatstroke は push 済みで、`origin/main`（`c3089c0`）から `3b80b7a` に到達できる。当初「未 push」と記録したのは push 前の時点を見ていたため
 - **`SHA256SUMS` が `.Rbuildignore` されており、インストール後のユーザーは `inst/extdata/` を検証できない**。同梱するなら kumagusu の `inst/provenance/` 方式（パスを書き換えた複製）が必要。あわせて、グローバル指示にある**定期的な `shasum -c` の実行と provenance への追記**の運用も未設定
 
-**扱い**: 次に回す（1 件目はユーザー判断待ち、2 件目は #4 の前後で）
+**扱い**: 1 件目は解消。2 件目（同梱と定期照合）は次に回す（#4 の前後で）

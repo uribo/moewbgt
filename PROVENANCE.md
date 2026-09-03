@@ -57,11 +57,11 @@ shasum -a 256 -c SHA256SUMS   # 8 ファイル。初回検証 2026-09-03、す�
 git show 7efd1b3:R/guides.R | shasum -a 256
 ```
 
-### 上流コミットの到達性（未解決）
+### 上流コミットの到達性（解消済み）
 
-コピー元の `3b80b7a` は japan-heatstroke の**ローカルクローンにしか存在しない**（`git branch -r --contains` が空。GitHub 側 `uribo/japan-heatstroke` の最終 push は 2025-01-23 で、分割を記録した `c3089c0` も未 push）。
+コピー元の `3b80b7a` は `uribo/japan-heatstroke` の `origin/main`（`c3089c0`）から到達できる。2026-09-03 に push され、GitHub API でも解決する。
 
-moewbgt 側のバイトは `7efd1b3` が push 済みなので失われないが、**「japan-heatstroke 由来である」ことの証明は端末 1 台に依存している**。japan-heatstroke を push すれば解消する。
+一時期この節は「ローカルクローンにしか存在しない」と書いていたが、それは push 前の時点の観測だった。moewbgt 側のバイトは `7efd1b3` が push 済みなので、上流・下流とも 1 台依存ではない。
 
 ## 元データの出自
 
@@ -86,12 +86,12 @@ moewbgt 側のバイトは `7efd1b3` が push 済みなので失われないが�
 
 ## 引き継いだ既知の問題（コピー時点では未修正）
 
-コピーは原文どおりで、以下はいずれも**このリポジトリで直す**課題として持ち込まれている。取り消し線の項目は解消済み（残り 4 件: 3・4・5・6）。
+コピーは原文どおりで、以下はいずれも**このリポジトリで直す**課題として持ち込まれている。取り消し線の項目は解消済み。残るのは 4（単位の規約、TODO #4 で決める）と 5（パス体系の確認、TODO #6）で、3 は改名しない判断で決着している。
 
 1. ~~**`data-raw/moe_wbgt_stations.R` の出力先が `here::here("data/…")` のまま**~~ — **解消（2026-09-03）**。出力先を `inst/extdata/` に変更した（12 箇所）。各ブロックの `file.exists()` ガードは残してあるので、再実行しても既存の凍結バイトは上書きされない
 2. ~~**`R/moe_alert.R` の `read_moe_alert <- memoise::memoise(...)` がトップレベルにある**~~ — **解消（2026-09-03）**。素の関数定義に戻し、同ファイル末尾の `.onLoad()` で memoise するようにした。インストール後に `memoise::is.memoised(read_moe_alert)` が `TRUE` を返すことを確認済み
 3. **`wbgt_observe*.csv` の名前が内容と食い違う**（実況値ではなく都道府県ローマ字表）。かつ 2022〜2024 年版は同一バイト。旧 CSV サービス専用の遺物であり、API 移行後は不要になる可能性が高い — **改名しない判断（2026-09-03、ユーザー）**。公開リポジトリの破壊的変更であり、API 移行でファイルごと不要になりうるため。食い違いは記述で担保する（本表・`README.md`・`CLAUDE.md`）
 4. **単位の規約が未決着**。`getSurveyData` の `wbgt_WO` は `"26.7"` の小数、`getForecastData` の `forecast_val` は `"40"` `"-10"` で ×10 に見える。`parse_moe_wbgt_csv(file_type = "1-A")` も換算せず `col_double()` で読むだけ
 5. **CSV 直リンク・`alert_record*.php` のパス体系が 2026 年度も同一かは未確認**
-6. **`man/` が無い**。`NAMESPACE` は手書きなので `R CMD check` は undocumented exports で警告する
+6. ~~**`man/` が無い**~~ — **解消（2026-09-03）**。7 つの export に roxygen コメントを書いて `man/` を生成し、`NAMESPACE` を roxygen2 生成に置き換えた。`R CMD check` は Status: OK
 7. ~~**`wbgt_guideline()` が整数以外で `NA` を返す区間がある**~~ — **解消（2026-09-03）**。降順の `>=` 連鎖に置き換え、指針の帯を半開区間として連続させた。旧実装は 15〜40 を 0.1 刻みで走らせると 18 点が `NA` になっていた。回帰テストは `tests/testthat/test-guides.R`

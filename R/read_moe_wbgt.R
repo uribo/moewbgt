@@ -1,3 +1,38 @@
+#' Read a WBGT forecast or observation CSV from the Ministry of the Environment
+#'
+#' Builds the download URL for one of the seasonal CSV files published by the
+#' Ministry of the Environment heat illness prevention information site, then
+#' parses it. Which file is requested depends on `type` and on which of the
+#' location arguments are supplied; see [moe_wbgt_request_url()] for the
+#' combinations.
+#'
+#' This targets the CSV download service that predates the 2026 WebAPI. Data
+#' provision is seasonal, so a call outside the operating period fails at the
+#' download rather than returning an empty table.
+#'
+#' @param type `"forecast"` for predicted values or `"observe"` for observed
+#'   ones.
+#' @param station One of the 11 monitoring sites, capitalised in romaji
+#'   (`"Sapporo"`, `"Tokyo"`, `"Naha"`, ...). Used for the `mntr` series.
+#' @param station_no Site number as used by the Japan Meteorological Agency,
+#'   for example `"43056"`.
+#' @param prefecture Prefecture in lower-case romaji, for example `"tokyo"`.
+#'   The accepted spellings are the `roman` column of the bundled
+#'   `wbgt_observe*.csv` tables.
+#' @param year_month Target month as `"YYYYMM"`. Required for `type =
+#'   "observe"`.
+#' @param .download Whether to also save the CSV into the working directory
+#'   under its own file name. Parsing reads from the URL either way.
+#' @return A tibble of WBGT values, or `NULL` when the supplied combination of
+#'   arguments matches no branch. The absent `else` is a known gap.
+#' @seealso [moe_wbgt_request_url()], [parse_moe_wbgt_csv()]
+#' @examples
+#' \dontrun{
+#' read_moe_wbgt(type = "forecast", station_no = "43056")
+#' read_moe_wbgt(type = "observe", station_no = "43056", year_month = "202404")
+#' }
+#'
+#' @export
 read_moe_wbgt <- function(
   type,
   station = NULL,
@@ -25,7 +60,6 @@ read_moe_wbgt <- function(
       )
     )
   }
-  domain_url <- "https://www.wbgt.env.go.jp"
   csv_url <-
     moe_wbgt_request_url(
       type = type,
@@ -35,7 +69,7 @@ read_moe_wbgt <- function(
       year_month = year_month
     )
   if (.download) {
-    download.file(csv_url, basename(csv_url))
+    utils::download.file(csv_url, basename(csv_url))
   }
   if (type == "forecast") {
     df <-
@@ -70,6 +104,29 @@ read_moe_wbgt <- function(
 # est15WG ... 実況値
 # final ...
 # mntr ... 実測地点別の予測値
+#' Build the download URL for a WBGT CSV
+#'
+#' Assembles the URL of one seasonal CSV. The path prefix identifies the
+#' series:
+#'
+#' \describe{
+#'   \item{`prev15WG/dl/`}{forecast values}
+#'   \item{`est15WG/dl/`}{observed values for the current year}
+#'   \item{`mntr/dl/`}{the 11 monitoring sites, keyed by `station`}
+#'   \item{`mntr/final/{year}/`}{confirmed values for an earlier year}
+#' }
+#'
+#' The branch is chosen from `type` together with which location arguments are
+#' non-`NULL`, and whether `year_month` falls in the current year.
+#'
+#' @inheritParams read_moe_wbgt
+#' @return A length-one glue string with the URL, or `NULL` when no branch
+#'   matches. The function has no final `else`, so an unsupported combination
+#'   is silent rather than an error.
+#' @seealso [moe_wbgt_request_urls()] for the vectorised form
+#' @examples
+#' moe_wbgt_request_url(type = "forecast", station_no = "43056")
+#' @export
 moe_wbgt_request_url <- function(
   type,
   station_no = NULL,
@@ -112,6 +169,22 @@ moe_wbgt_request_url <- function(
   }
 }
 
+#' Build several WBGT CSV URLs at once
+#'
+#' Vectorised form of [moe_wbgt_request_url()]: the arguments are recycled in
+#' parallel with [purrr::pmap_chr()], so each element of the supplied vectors
+#' produces one URL.
+#'
+#' @param ... Named vectors matching the arguments of
+#'   [moe_wbgt_request_url()], all of the same length.
+#' @return A character vector of URLs, one per element of the inputs.
+#' @seealso [moe_wbgt_request_url()]
+#' @examples
+#' moe_wbgt_request_urls(
+#'   type = c("forecast", "forecast"),
+#'   station_no = c("43056", "44132")
+#' )
+#' @export
 moe_wbgt_request_urls <- function(...) {
   purrr::pmap_chr(
     list(...),
@@ -119,6 +192,45 @@ moe_wbgt_request_urls <- function(...) {
   )
 }
 
+#' Parse a WBGT CSV into a long tibble
+#'
+#' Reads one of the CSV layouts described in the Ministry of the Environment
+#' data service manual and returns it in long form. `path` may be a URL or a
+#' local file.
+#'
+#' The layouts differ enough that the parser branches on `file_type` rather
+#' than inspecting the file:
+#'
+#' \describe{
+#'   \item{`"1-A"`, `"1-B"`, `"1-C"`}{forecast values, one column per
+#'     forecast datetime; pivoted to `datetime` and `wbgt`}
+#'   \item{`"2-A"`}{observed values for a single site, already long}
+#'   \item{`"2-B"`, `"2-C"`}{observed values with one column per site;
+#'     pivoted to `station_no` and `wbgt`}
+#'   \item{`"2-D"`}{observed values for one monitoring site, including the
+#'     globe temperature column `tg`}
+#' }
+#'
+#' Values are read as-is with no unit conversion. Whether the upstream columns
+#' are degrees Celsius or tenths is not yet settled; see `PROVENANCE.md`.
+#'
+#' @param path URL or path of the CSV.
+#' @param file_type File layout in the manual's notation: one of `"1-A"`,
+#'   `"1-B"`, `"1-C"`, `"2-A"`, `"2-B"`, `"2-C"`, `"2-D"`.
+#' @param .station_no Site number for `"2-A"`. When `NULL` it is recovered
+#'   from the file name.
+#' @param .station Monitoring site name for `"2-D"`. When `NULL` it is
+#'   recovered from the file name.
+#' @return A tibble whose first column is `type` (`"forecast"` or
+#'   `"observe"`), followed by the site identifier, the time columns and
+#'   `wbgt`.
+#' @seealso [read_moe_wbgt()]
+#' @examples
+#' \dontrun{
+#' parse_moe_wbgt_csv("yohou_43056.csv", file_type = "1-A")
+#' }
+#'
+#' @export
 parse_moe_wbgt_csv <- function(
   path,
   file_type,

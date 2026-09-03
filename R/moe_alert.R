@@ -1,3 +1,29 @@
+# The @importFrom rvest below looks redundant next to the rvest:: calls in the
+# body, and it is -- for the code. It is there for R CMD check: .onLoad()
+# rebinds read_moe_alert to its memoised wrapper, and the check's analysis of
+# the installed namespace then no longer sees the rvest:: calls, so rvest is
+# reported under "All declared Imports should be used". Removing the directive
+# brings that NOTE back (confirmed 2026-09-03 by disabling the rebinding).
+#' Read the heat stroke alert announcement record for a year
+#'
+#' Scrapes the table of heat stroke alert announcements published on the
+#' Ministry of the Environment heat illness prevention information site. The
+#' result is memoised for the session, so repeating a call for the same year
+#' does not hit the network again.
+#'
+#' @param year Announcement year. Records begin in 2019; a year outside 2019
+#'   to the current year is an error.
+#' @return A tibble in the wide layout of the source table: one row per
+#'   prefecture, one column per announcement slot. Pass it to
+#'   [alert_to_long()] to get one row per prefecture and datetime.
+#' @seealso [alert_to_long()]
+#' @examples
+#' \dontrun{
+#' read_moe_alert(2024)
+#' }
+#'
+#' @importFrom rvest read_html
+#' @export
 read_moe_alert <- function(year) {
   if (
     dplyr::between(year, 2019, lubridate::year(lubridate::today())) == FALSE
@@ -30,10 +56,31 @@ read_moe_alert <- function(year) {
   read_moe_alert <<- memoise::memoise(read_moe_alert)
 }
 
+#' Reshape an alert announcement table to one row per prefecture and datetime
+#'
+#' The source table is wide, with one column per announcement slot, and its
+#' layout changed when the special alert was introduced: earlier years carry one announcement count column and two
+#' slots a day, later years carry two and one slot a day. The shape is chosen
+#' from the number of announcement count columns present, so the same call
+#' works across years.
+#'
+#' @param df A table as returned by [read_moe_alert()].
+#' @param year The year `df` describes. The source table's column headers omit
+#'   it, so it has to be supplied to build the datetimes.
+#' @return A tibble with a `datetime` column and one logical column per alert
+#'   type (`alert`, and `special_alert` for years that have it), `TRUE` where
+#'   an alert was announced.
+#' @seealso [read_moe_alert()]
+#' @examples
+#' \dontrun{
+#' alert_to_long(read_moe_alert(2024), 2024)
+#' }
+#'
+#' @export
 alert_to_long <- function(df, year) {
   alert_type_n <-
     colnames(df) |>
-    stringr::str_count("発表回数") |>
+    stringr::str_count("\u767a\u8868\u56de\u6570") |>
     sum()
   if (alert_type_n == 1) {
     df <-
@@ -52,7 +99,7 @@ alert_to_long <- function(df, year) {
       ) |>
       dplyr::slice(-1) |>
       tidyr::pivot_longer(
-        cols = contains("/"),
+        cols = tidyselect::contains("/"),
         names_to = "datetime",
         values_to = "alert"
       ) |>

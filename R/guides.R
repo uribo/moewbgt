@@ -1,7 +1,17 @@
-# wbgt_guideline(31)
-# wbgt_guideline(30)
-# wbgt_guideline(25)
-# wbgt_guideline(18)
+#' Label a WBGT value with its daily-life guideline band
+#'
+#' Maps heat index (WBGT) values onto the four bands of the daily-life
+#' guideline distributed with the Ministry of the Environment heat illness
+#' prevention information. The bands are half-open and cover the whole line:
+#' 31 and above, 28 up to 31, 25 up to 28, and below 25.
+#'
+#' @param x Numeric vector of WBGT values in degrees Celsius.
+#' @param lang Language of the returned labels: `"ja"` (the default) or
+#'   `"en"`.
+#' @return A character vector as long as `x`. `NA` input yields `NA`.
+#' @examples
+#' wbgt_guideline(c(31, 30.5, 27.5, 18), lang = "en")
+#' @export
 wbgt_guideline <- function(x, lang = "ja") {
   lang <-
     rlang::arg_match(lang, c("ja", "en"))
