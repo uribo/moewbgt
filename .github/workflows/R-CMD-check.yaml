@@ -50,6 +50,24 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      # This matrix resolves dependencies from DESCRIPTION against current CRAN,
+      # which is what CRAN itself does and what the R 4.1 / oldrel-1 / devel jobs
+      # are for. renv.lock pins one R version (4.6.1) and one set of package
+      # versions; restoring it here would make five of the six jobs test an
+      # environment nothing uses, and would silently retire the only check of the
+      # declared `Depends: R (>= 4.1.0)` floor.
+      #
+      # But renv/activate.R is tracked, so every job checks it out, and both
+      # setup-r-dependencies and check-r-package start R from the repository
+      # root -- which reads .Rprofile, activates renv, and repoints .libPaths()
+      # at an empty project library on all six runners. Disabling the autoloader
+      # is what keeps this workflow on DESCRIPTION resolution. The variable is
+      # read by renv/activate.R itself (see the getenv call there), so it works
+      # without renv being installed.
+      #
+      # The renv.yaml workflow is the one that restores the lockfile; it
+      # deliberately does not set this.
+      RENV_CONFIG_AUTOLOADER_ENABLED: FALSE
 
     steps:
       - uses: actions/checkout@v6
