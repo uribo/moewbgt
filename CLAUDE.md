@@ -81,9 +81,20 @@ CI は `.github/workflows/` の 2 本。`R-CMD-check` は 6 ジョブで、う�
 
 `parse_moe_wbgt_csv()` の `file_type` は仕様書のファイル種別（`1-A`〜`2-D`）に対応する。`2-A` と `2-D` は引数が `NULL` のときファイル名から地点を復元するので、URL でもローカルパスでも動く。**2026 年度もこのパス体系が同一かは未確認**（PROVENANCE 問題 5）。
 
-### 単位の規約が未決着
+### 単位の規約（実測で決着・2026-09-03）
 
-`getSurveyData` の `wbgt_WO` は `"26.7"` の小数、`getForecastData` の `forecast_val` は `"40"` `"-10"` で ×10 に見える。`parse_moe_wbgt_csv(file_type = "1-A")` は換算せず `col_double()` で読むだけ。API クライアントを書くときに公開出力の単位を決め、決めた根拠をここに書く（PROVENANCE 問題 4）。
+**2 つのエンドポイントで単位が違う。**仕様書はどちらの単位も書いていないので、生きた API に照会して確定させた（根拠は PROVENANCE 問題 4）。
+
+| エンドポイント | フィールド | 実際の値 | 意味 |
+| --- | --- | --- | --- |
+| `getSurveyData` | `wbgt_WO` / `wbgt_Tw` / `wbgt_Tg` / `wbgt_WI` | `"21.9"` | **摂氏の小数**（`wbgt_WI` だけ品質情報 0〜4 で `"4.0"` の形） |
+| `getForecastData` | `forecast_val` | `"220"` | **摂氏 ×10 の整数**（220 = 22.0 ℃） |
+
+**クライアントは換算しない。**上流のキー名（`forecast_val` / `wbgt_WO` / …）のまま `numeric` で返し、単位はドキュメントで伝える（キー名を `wbgt` に変えると「摂氏である」という主張になってしまうため。TODO #4 の設計で決着）。**roxygen に「単位は未確定」と書かない** — 上の表のとおり確定している。
+
+仕様書は両者を「数値」と書いているが、**JSON では文字列で返る**（`wbgt_no` / `wbgt_class` / `area_cd` / `pref_cd` / `flag` だけが整数）。パース時に型を仕様書の記載から決めない。
+
+旧 CSV サービスの `parse_moe_wbgt_csv(file_type = "1-A")` は換算せず `col_double()` で読むだけで、**そちらの単位は未確認**。API と同じ規約だと決めてかからない。
 
 ## コーディング規約
 
