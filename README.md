@@ -3,7 +3,7 @@
 環境省 熱中症予防情報サイト（<https://www.wbgt.env.go.jp/>）が提供する暑さ指数（WBGT）と熱中症警戒アラートのデータを R で扱うためのパッケージ。
 
 > [!WARNING]
-> **移行直後の状態です。** 中身は [uribo/japan-heatstroke](https://github.com/uribo/japan-heatstroke) からコピーした関数そのままで、**2026 年度に追加された WebAPI にはまだ対応していません**（CSV 直リンクを前提としたコードです）。ドキュメント（`man/`）も未整備で、`R CMD check` は通りません。経緯と既知の問題は [PROVENANCE.md](PROVENANCE.md) を参照してください。
+> **2026 年度に追加された WebAPI にはまだ対応していません。** 公開している関数は [uribo/japan-heatstroke](https://github.com/uribo/japan-heatstroke) からコピーしたもので、CSV 直リンクを前提としています。API クライアントは未実装です。パッケージとしての整備は済んでおり（`man/` 生成済み、`R CMD check` は Status: OK、CI は 6 ジョブ）、経緯と既知の問題は [PROVENANCE.md](PROVENANCE.md) を参照してください。
 
 ## 状況
 
