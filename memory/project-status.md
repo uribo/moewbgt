@@ -13,7 +13,7 @@ updated: 2026-09-04
 
 - **現在採用している方針**: エージェント環境を jpops / kumagusu（R パッケージ 2 例）ではなく research-project-template 寄りに構成した。`CLAUDE.md` + `AGENTS.md` + `.claude/settings.json` + `.codex/config.toml` + `memory/` + `TODO.md`。skill の symlink は conf-macos の `deploy/manifest.tsv` で scope=both を宣言し、`.claude/skills/` と `.agents/skills/` の両方へ配備する。`.claude/settings.json` は**テンプレートの renv 関連 hook（PreToolUse の renv.lock ゲート、Stop の renv drift チェック）を 2026-09-04 に戻した**（renv を導入したため。それ以前は「renv 未導入で動かない hook は誤解の元」という理由で落としていた）。
 
-### renv の導入（2026-09-04）— ブランチ `feat/renv`、3 コミット、**未 push**
+### renv の導入（2026-09-04）— ブランチ `feat/renv`、PR [#3](https://github.com/uribo/moewbgt/pull/3)（レビュー待ち）
 
 **採用した方針: `R-CMD-check` と `renv` は別の契約を検証し、片方をもう片方に寄せない。**`R-CMD-check` の 6 ジョブは DESCRIPTION から現行 CRAN に解決する（CRAN 自身がやること＝パッケージが利用者に負う契約。`ubuntu-22.04` + R 4.1 が `Depends: R (>= 4.1.0)` を検証する唯一の手段）。新設の `renv` ジョブは `renv.lock` が記録する R 版 1 つで restore する（新しい checkout に座った人に repo が負う契約）。
 
