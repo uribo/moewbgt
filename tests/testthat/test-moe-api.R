@@ -22,6 +22,23 @@ test_that("moe_api_classify distinguishes threshold and validation errors", {
   )
 })
 
+test_that("identifiers read factor labels rather than level codes", {
+  # The codes of this factor are 2 and 1, and both would pass every
+  # subsequent check as ordinary site numbers.
+  expect_identical(
+    moewbgt:::moe_api_ids(factor(c("44132", "11001")), "station_no"),
+    c("44132", "11001")
+  )
+  expect_identical(
+    moewbgt:::moe_api_ids(factor(c("9194", "44")), "pref_cd"),
+    c("9194", "44")
+  )
+  expect_error(
+    moewbgt:::moe_api_ids(factor("Tokyo"), "station_no"),
+    "non-negative whole numbers"
+  )
+})
+
 test_that("request query parameters use repeated names", {
   request <- moewbgt:::moe_api_request(
     "getSurveyData",

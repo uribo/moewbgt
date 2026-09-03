@@ -22,6 +22,14 @@ moe_api_ids <- function(x, arg) {
       "` must be a non-empty vector without missing values."
     ))
   }
+  # A factor is an integer vector wearing labels, so `as.numeric()` would
+  # return its level codes: `factor("44132")` becomes 1. Those codes are
+  # themselves plausible site numbers, so the API would answer about some
+  # other place instead of refusing. Read the labels, which is what the
+  # caller meant.
+  if (is.factor(x)) {
+    x <- as.character(x)
+  }
   values <- suppressWarnings(as.numeric(x))
   if (anyNA(values) || any(values %% 1 != 0) || any(values < 0)) {
     rlang::abort(paste0("`", arg, "` must contain non-negative whole numbers."))
