@@ -233,11 +233,10 @@ moe_api_parse_response_datetime <- function(x, field) {
 # inclusive on both endpoints (PROVENANCE.md, upstream status section), but
 # that is a measurement rather than a documented contract, and only an
 # overlap is correct under both readings: a shared instant is fetched twice
-# at worst, which the
-# `distinct()` in `moe_api_collect()` removes, whereas abutting ranges drop
-# the boundary record outright if the API excludes `date_to` -- and drop it
-# silently, so splitting would return fewer rows than the same unsplit
-# request.
+# at worst, which the `distinct()` in `moe_api_collect()` removes, whereas
+# abutting ranges drop the boundary record outright if the API excludes
+# `date_to` -- and drop it silently, so splitting would return fewer rows
+# than the same unsplit request.
 moe_api_intervals <- function(from, to, max_span) {
   if (is.null(max_span)) {
     return(list(list(from = from, to = to)))
