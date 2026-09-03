@@ -1,0 +1,18 @@
+#' JMA-region codes used by the Ministry of the Environment WebAPI
+#'
+#' A lookup table for the regional and prefecture/subprefecture codes accepted
+#' by `getForecastData` and `getSurveyData`. These are Japan Meteorological
+#' Agency region codes, not JIS prefecture codes. Hokkaido is divided into
+#' subprefectures and Okinawa uses the combined code 9194.
+#'
+#' @format A tibble with 60 rows and four columns:
+#' \describe{
+#'   \item{area_cd}{Integer regional code from 1 to 11.}
+#'   \item{area_name}{Japanese regional name.}
+#'   \item{pref_cd}{Integer prefecture or subprefecture code.}
+#'   \item{pref_name}{Japanese prefecture or subprefecture name.}
+#' }
+#' @source Ministry of the Environment, Heat Illness Prevention Information
+#'   Site WebAPI specification, version 1.1, section 2-1,
+#'   \url{https://www.wbgt.env.go.jp/man15NH/wbgt_data_api_service_manual.pdf}
+"wbgt_pref_codes"

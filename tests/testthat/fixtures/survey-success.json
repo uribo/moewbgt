@@ -1,0 +1,29 @@
+{
+  "status": "success",
+  "data": [
+    {
+      "wbgt_no": 11001,
+      "wbgt_date": "2012/06/01 00:00:00",
+      "wbgt_class": 0,
+      "area_cd": 1,
+      "pref_cd": 11,
+      "wbgt_WI": "1.0",
+      "wbgt_WO": "9.9",
+      "wbgt_Tw": "9.7",
+      "wbgt_Tg": "10.0"
+    },
+    {
+      "wbgt_no": 11001,
+      "wbgt_date": "2012/06/01 01:00:00",
+      "wbgt_class": 0,
+      "area_cd": 1,
+      "pref_cd": 11,
+      "wbgt_WI": "1.0",
+      "wbgt_WO": "9.1",
+      "wbgt_Tw": "9.0",
+      "wbgt_Tg": "9.3"
+    }
+  ],
+  "count": 2,
+  "errMsg": ""
+}
