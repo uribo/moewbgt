@@ -35,7 +35,13 @@ updated: 2026-09-04
 
 **リポジトリ設定は解消済み（2026-09-04）**: `renv-update` が必要とする「Allow GitHub Actions to create and approve pull requests」をユーザーが有効化し、`can_approve_pull_request_reviews: true` を確認した。**同じ操作で `default_workflow_permissions` が `read` → `write` にも変わっている** — 現行 4 本はすべて `permissions:` を明示しているので実害は無いが、`read` に戻すかは未決（`TODO.md` #8）。
 
-**残っている作業（次に行う 1 つ）**: `feat/renv` を push して PR を出し、`renv` ジョブの初回実行を見る。手元で確認できたのは内部整合性までで、Linux での restore 可能性（sf / pdftools の sysreqs を pak が解決できるか、GitHub から `ensurer` / `zipangu` を取れるか）と `timeout-minutes: 45` の妥当性は、その 1 回目が初めての証拠になる。
+**PR [#3](https://github.com/uribo/moewbgt/pull/3) を作成（2026-09-04）。初回 CI の結果**:
+
+- `R-CMD-check` 6 ジョブすべて pass（1m26s〜2m23s）。**R 4.1 が通ったことで `RENV_CONFIG_AUTOLOADER_ENABLED: FALSE` のガードが効いていることも実証された**（効いていなければ空のプロジェクトライブラリを向いて落ちる）。`air-format` も pass
+- **`renv` ジョブの restore は完全に成功した**（59.5 秒）。pak が GDAL/GEOS/PROJ/poppler 等を apt で解決し、sf・pdftools・s2・jmastats と GitHub の 2 件をすべて入れた。**懸念していた Linux 側の復元可能性はこれで実証済み。**`timeout-minutes: 45` は実測 1m40s に対して十分過ぎるが、キャッシュが効かない更新時の値なので当面下げない
+- **落ちたのは `renv::status()` の 1 点だけ**: `ensurer [ref: master != feb1defe…]`。`renv::install("user/repo")` はブランチ名を `RemoteRef` に書くが restore は SHA で入れるため、**手元では synchronized なのに CI だけが落ちる**。`renv::install("user/repo@<sha>")` で入れ直し、`ensurer` / `zipangu` とも `RemoteRef == RemoteSha` にした（動く ref を不変識別子へ固定する規約とも一致する）。**ブランチ名に戻さない。**
+
+**残っている作業（次に行う 1 つ）**: 修正を push して `renv` ジョブの再実行を確認する。
 
 **作業ツリーに残した他人の変更**: `.gitignore`（quarto の 3 行）と `data-raw/wbgt_pref_codes.R`（JMA の参照 URL 追記と `stringi::stri_trans_nfkc` による NFKC 正規化）は私の変更ではないので**コミットせずそのまま残してある**。どちらも lockfile を out-of-sync にはしない（`stringi` / `tidyselect` は既に記録済み）。
 
