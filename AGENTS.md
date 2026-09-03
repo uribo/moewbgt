@@ -10,8 +10,8 @@ Read and follow `CLAUDE.md` as the primary source of project knowledge and conve
 
 ## Provenance
 
-- `SHA256SUMS` mixes two kinds of records with opposite update rules. Read the "SHA256SUMS の扱い" section of `CLAUDE.md` before touching either the file or anything it covers.
-- The eight `inst/extdata/` entries are frozen bytes that may not be re-obtainable upstream. Never resolve a mismatch by rewriting the recorded digest, and never delete or overwrite those files. Report the mismatch instead.
+- `SHA256SUMS` covers the eight `inst/extdata/` files and nothing else. They are frozen bytes that may not be re-obtainable upstream, so a mismatch is always a defect. Never resolve one by rewriting the recorded digest, and never delete or overwrite those files. Report the mismatch instead.
+- Do not add `R/` or `data-raw/` entries back to `SHA256SUMS`. Their copy-time digests are history, kept in `PROVENANCE.md`; putting them back makes the gate fire on intended edits. See the "SHA256SUMS の扱い" section of `CLAUDE.md`.
 - Keep data retrieval fail-loud. Do not wrap it in `purrr::safely()` or `tryCatch()`.
 
 ## Handoff from Claude Code
