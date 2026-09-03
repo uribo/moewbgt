@@ -10,7 +10,9 @@
 #'   [wbgt_pref_codes]. Mutually exclusive with `station_no`.
 #' @param date_from,date_to Range of forecast issue times. Date, POSIXct, and
 #'   parseable character values are accepted and interpreted in Japan
-#'   Standard Time. Supply both or neither.
+#'   Standard Time. Supply both or neither. Both ends are inclusive:
+#'   forecasts issued at `date_to` itself are returned (measured against the
+#'   live API on 2026-09-04; the manual does not say).
 #' @param origin_date One forecast issue time. Mutually exclusive with
 #'   `date_from` and `date_to`.
 #' @param fixed_time Optional issue time in `"HHMMSS"` format for range

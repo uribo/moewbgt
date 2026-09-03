@@ -10,6 +10,9 @@
 #'   [wbgt_pref_codes]. Mutually exclusive with `station_no`.
 #' @param date_from,date_to Observation range. Date, POSIXct, and parseable
 #'   character values are accepted and interpreted in Japan Standard Time.
+#'   Both ends are inclusive: the record observed at `date_to` itself is
+#'   returned (measured against the live API on 2026-09-04; the manual does
+#'   not say).
 #' @param data_type One or both of `0` (estimated) and `1` (measured).
 #' @param max_span Optional stride between requests, as a positive number of
 #'   seconds or a `difftime`. Consecutive requests share their boundary

@@ -21,7 +21,10 @@ read_moe_survey(
 \link{wbgt_pref_codes}. Mutually exclusive with \code{station_no}.}
 
 \item{date_from, date_to}{Observation range. Date, POSIXct, and parseable
-character values are accepted and interpreted in Japan Standard Time.}
+character values are accepted and interpreted in Japan Standard Time.
+Both ends are inclusive: the record observed at \code{date_to} itself is
+returned (measured against the live API on 2026-09-04; the manual does
+not say).}
 
 \item{data_type}{One or both of \code{0} (estimated) and \code{1} (measured).}
 

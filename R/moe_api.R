@@ -229,8 +229,11 @@ moe_api_parse_response_datetime <- function(x, field) {
 
 # Consecutive requests share their boundary instead of abutting, so
 # `max_span` is a stride rather than a width. The manual never says whether
-# `date_to` is inclusive, and only an overlap is correct under both
-# readings: a shared instant is fetched twice at worst, which the
+# `date_to` is inclusive. A live probe on 2026-09-04 found both ends
+# inclusive on both endpoints (PROVENANCE.md, upstream status section), but
+# that is a measurement rather than a documented contract, and only an
+# overlap is correct under both readings: a shared instant is fetched twice
+# at worst, which the
 # `distinct()` in `moe_api_collect()` removes, whereas abutting ranges drop
 # the boundary record outright if the API excludes `date_to` -- and drop it
 # silently, so splitting would return fewer rows than the same unsplit
