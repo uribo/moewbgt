@@ -77,7 +77,9 @@ TODO #4（WebAPI クライアント）の設計を確定し、実装を Codex �
 
 **PR #2 の CI は 7 ジョブすべて pass**（2026-09-03）。`ubuntu-22.04 (4.1)` が通ったことで、**`httr2` を Imports に足しても `Depends: R (>= 4.1.0)` が保てている**ことが実証された（ブリーフ §8 の停止条件の 1 つだった項目）。所要は air-format 6s / macOS 1m29s / Linux release 1m20s / devel 1m29s / oldrel-1 1m44s / **R 4.1 1m54s** / Windows 1m56s。初回コールド（R 4.1 で 7m35s）に対しキャッシュが効いており、`timeout-minutes: 30` は依然として妥当。
 
-- **次に行う作業（1 つ）**: PR [#2](https://github.com/uribo/moewbgt/pull/2) をマージする（レビュー・CI・Copilot 指摘の対応は完了済み。マージはユーザー判断待ち）。その後 `date_to` の包含／排他を実レスポンスで確定させ（`TODO.md` #6 にコマンドあり）、`@param date_to` と `PROVENANCE.md` に書く。運用期間内（〜2026-10-21）に限る。
+**PR #2 をマージ済み**（merge commit `1fd3a88`、2026-09-03）。PR #1 と同じく squash せずマージコミットにした（9 コミットそれぞれに判断の根拠を書いてあるため）。このマージで、`origin/main` に未 push だった `b4c0f9e` / `c8e9a86` の 2 コミットも上がっている。ブランチ `feat/webapi-client` は残してある。
+
+- **次に行う作業（1 つ）**: `date_to` の包含／排他を実レスポンスで確定させ（`TODO.md` #6 にコマンドあり）、`@param date_to` と `PROVENANCE.md` に書く。**運用期間内（〜2026-10-21）に限る**。実装は両対応なのでブロックはされないが、期限を過ぎると翌シーズンまで確かめられない。
 
 - **試して失敗したこと**: `Rscript -e` へシェル変数を渡すのに `export` を忘れ、`Sys.getenv("SP")` が `""` を返して保存先が `/` になった。`download.file()` は権限エラーで落ちたが、それを `tryCatch()` で包んでいたため**「上流に URL が無い」と読み違えた**（2026-09-03、第 1.0 版の日付入り URL を 404 と誤断定。ユーザーが実際に取得できたことで判明）。取得の失敗を包むときは原因を握り潰さず `conditionMessage()` を出す。グローバル指示の「`purrr::safely()` で握り潰さない」はこの形の探索コードにも効く。
 - **試して失敗したこと**: シェルが `noclobber` なので `cat > file` は既存ファイルに対して `file exists` で失敗する。上書きするときは `cat >| file` を使う。
@@ -89,7 +91,7 @@ TODO #4（WebAPI クライアント）の設計を確定し、実装を Codex �
 - **さらにその前**（TODO #1 実装後、2026-09-03 JST）: `shasum -a 256 -c SHA256SUMS` は **8 ファイルすべて OK**（13 ではない。コード 5 行を外したため）。外した 5 行の値が `PROVENANCE.md` の履歴表と 5/5 一致することを確認。`PROVENANCE.md` に書いた検証レシピ `git show 7efd1b3:R/guides.R | shasum -a 256` を 2 ファイルで実地確認し、履歴表の値と一致。残る「13 行」の記述は経緯の説明 3 箇所のみで、いずれも文脈上正しい。
 - **いちばん古い記録**（環境整備時、2026-09-03 JST）: `deploy/deploy.sh --apply` 実行後、`.claude/skills/` と `.agents/skills/` に `r-modern-tidyverse` / `r-rlang-programming` の symlink が張られリンク先が実在することを確認。`shasum -a 256 -c SHA256SUMS` は 13 ファイルすべて OK（コードには一切触れていない）。`jq -e .` で `.claude/settings.json`、`python3 -c 'import tomllib'` で `.codex/config.toml` の構文を確認。`git add -n` で追跡対象が意図した 10 ファイルだけ（symlink は `.gitignore` で除外）であることを確認。`LC_ALL` は禁止コメント 1 箇所にしか現れない。scratchpad で `R CMD build` を実行し、生成 tarball に `CLAUDE.md` / `AGENTS.md` / `TODO.md` / `memory/` / `.agents` / `.claude` / `.codex` / `SHA256SUMS` / `data-raw` が 1 件も含まれないことを確認（2026-09-03 JST）。
 
-- **現在フェーズ**: TODO #4 フェーズ 1 完了。`feat/webapi-client` を PR に出した。**作業ツリーの所有権は Claude にある**（Codex のジョブは `codex cancel` で明示的に閉じてある）
+- **現在フェーズ**: TODO #4 フェーズ 1 完了・`main` にマージ済み。**作業ツリーの所有権は Claude にある**（Codex のジョブは `codex cancel` で明示的に閉じてある）
 - **直近の作業**: エージェント環境の新規作成 → #1（`SHA256SUMS` の切り分け）→ #5（問題 1・2・7 の修正と回帰テスト）→ 問題 3 の判断 → #2（roxygen2 化）→ #3（CI）→ PR #1 マージ → #4 の設計確定とブリーフ作成 → Codex 実装 → レビューと境界の修正
 - **次のステップ**: `date_to` の包含／排他を実測（#6）。その後 #7（`SHA256SUMS` の同梱・定期照合）。`date_search_type = 2` は意図的に未対応
 - **ブロッカー**: `TODO.md` を参照
