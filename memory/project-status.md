@@ -71,9 +71,13 @@ TODO #4（WebAPI クライアント）の設計を確定し、実装を Codex �
 
 **指摘 1 は Claude が修正した**（`e269c34`、ユーザー判断で担当を Claude に。Codex はこのセッションで 2 回死んでおり、3 回目も同じ経路で落ちうるため）。区間を 1 点重ねる形にし、`while (current < to)` + `current <- interval_to`、二分は `[from, midpoint]` / `[midpoint, to]`。到達不能になった degenerate 区間のマージは削除。テストは境界のタイムスタンプを固定する形（＝バグの側を固定していた）から、「`date_to` を排他として扱うモックで分割あり／なしの行数が一致する」という性質のテストへ置き換えた。**修正後の実測**: 排他 4/4/4/4、包含 5/5/5/5（分割なし / `max_span` 1h / 1.5h / 上限エラーで二分）。
 
+**PR [#2](https://github.com/uribo/moewbgt/pull/2) の Copilot レビュー指摘 1 件に対応した**（`ae6272e`、2026-09-03）。`moe_api_ids()` の `as.numeric()` が factor を水準コードに変換していた — `factor(c("44132","11001"))` が `wbgt_nos=2&wbgt_nos=1` になる。**水準コード自体が地点番号として妥当な値なので API はエラーを返さず、別地点の整合的な表が返る**のが厄介な点。`as.character()` でラベルを読んでから数値化する形にし、回帰テストを追加した。ユーザー入力を受ける他の 3 経路（`moe_api_datetime()` / `moe_api_fixed_time()` / `data_type` の検証）も factor で叩いて確認したところ、いずれも変換せず abort するので、静かに誤値が通るのはここだけだった。
+
 **未確認（運用期間中に要実測。2026-10-21 を過ぎると翌シーズンまで確かめられない）**: `date_to` が包含か排他か。**クライアントは両対応なので実装はブロックされない**。単位と同じ形で 1 本叩けば決まる — `getSurveyData?data_type=0&location_type=1&wbgt_nos=44132&date_from=20260901000000&date_to=20260901000000` の `count` が 1 なら包含、0 なら排他。**上の修正はどちらでも入れる**（両対応が設計）が、答えが出れば `@param date_to` に意味を書けるので `PROVENANCE.md` の単位の記録の隣に残す。
 
-- **次に行う作業（1 つ）**: `date_to` の包含／排他を実レスポンスで確定させ（`TODO.md` #6 にコマンドあり）、`@param date_to` と `PROVENANCE.md` に書く。運用期間内（〜2026-10-21）に限る。
+**PR #2 の CI は 7 ジョブすべて pass**（2026-09-03）。`ubuntu-22.04 (4.1)` が通ったことで、**`httr2` を Imports に足しても `Depends: R (>= 4.1.0)` が保てている**ことが実証された（ブリーフ §8 の停止条件の 1 つだった項目）。所要は air-format 6s / macOS 1m29s / Linux release 1m20s / devel 1m29s / oldrel-1 1m44s / **R 4.1 1m54s** / Windows 1m56s。初回コールド（R 4.1 で 7m35s）に対しキャッシュが効いており、`timeout-minutes: 30` は依然として妥当。
+
+- **次に行う作業（1 つ）**: PR [#2](https://github.com/uribo/moewbgt/pull/2) をマージする（レビュー・CI・Copilot 指摘の対応は完了済み。マージはユーザー判断待ち）。その後 `date_to` の包含／排他を実レスポンスで確定させ（`TODO.md` #6 にコマンドあり）、`@param date_to` と `PROVENANCE.md` に書く。運用期間内（〜2026-10-21）に限る。
 
 - **試して失敗したこと**: `Rscript -e` へシェル変数を渡すのに `export` を忘れ、`Sys.getenv("SP")` が `""` を返して保存先が `/` になった。`download.file()` は権限エラーで落ちたが、それを `tryCatch()` で包んでいたため**「上流に URL が無い」と読み違えた**（2026-09-03、第 1.0 版の日付入り URL を 404 と誤断定。ユーザーが実際に取得できたことで判明）。取得の失敗を包むときは原因を握り潰さず `conditionMessage()` を出す。グローバル指示の「`purrr::safely()` で握り潰さない」はこの形の探索コードにも効く。
 - **試して失敗したこと**: シェルが `noclobber` なので `cat > file` は既存ファイルに対して `file exists` で失敗する。上書きするときは `cat >| file` を使う。
