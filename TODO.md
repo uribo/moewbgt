@@ -106,6 +106,6 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 
 手元で `R CMD build .` → `R CMD check` を回すと `checking for hidden files and directories ... NOTE`（`Found the following hidden files and directories: .vscode`）が出る。**CI では出ない。**`.vscode` はユーザーのグローバル gitignore（`~/.config/git/ignore`）で除外されていて git に入らず、clean checkout からビルドする CI の tarball には現れないため。`CLAUDE.md` の「Status: OK（0/0/0）」は CI と同じ条件を指しており、その主張は今も有効。
 
-**renv 導入による退行ではない**（2026-09-04、変更前後の tarball 内容で確認）。手元の NOTE を消したければ `.Rbuildignore` に `^\.vscode$` を 1 行足すだけだが、リポジトリの側の不具合ではない。
+**renv 導入による退行ではない**（2026-09-04 確認。根拠は `git ls-tree main` に `.vscode` が無いことと、`git check-ignore -v .vscode` が `~/.config/git/ignore` を指すこと。変更前のツリーを実際にビルドして比べたわけではない）。手元の NOTE を消したければ `.Rbuildignore` に `^\.vscode$` を 1 行足すだけだが、リポジトリの側の不具合ではない。
 
 **扱い: 次に回す**（renv のスコープ外なので、この作業では触っていない）
