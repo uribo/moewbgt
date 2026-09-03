@@ -99,7 +99,8 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 
 **残り**:
 
-- **`renv-update` はリポジトリ設定が要る。** 「Allow GitHub Actions to create and approve pull requests」（Settings > Actions > General）が無効のままだと `gh pr create` が `GitHub Actions is not permitted to create or approve pull requests` で落ちる。追加時点で `can_approve_pull_request_reviews: false` を確認済み。**扱い: 次に回す**（ユーザーが設定を切り替えるまで、この 1 本だけ初回のスケジュール実行で赤くなる）
+- ~~**`renv-update` はリポジトリ設定が要る。**~~ **解消（2026-09-04、ユーザーが有効化）**。「Allow GitHub Actions to create and approve pull requests」（Settings > Actions > General）を有効にした。`gh api repos/uribo/moewbgt/actions/permissions/workflow` が `can_approve_pull_request_reviews: true` を返すことで確認済み
+- **同じ設定変更で `default_workflow_permissions` が `read` → `write` に変わっている。** 現行の 4 ワークフローはいずれも `permissions:` を明示しているので実害は無いが、既定値は「`permissions:` を書き忘れたワークフローに read-write のトークンを渡す」という意味になる。**扱い: 次に回す**（`read` に戻すかを決める。戻しても `renv-update` は `permissions: contents: write / pull-requests: write` を自分で宣言しているので動く）
 - `renv` ジョブの `timeout-minutes: 45` はこのリポジトリでの実測が無い見積り。数回走ったら実測値で見直す（超えたら外さずに数字を上げる）。**扱い: 次に回す**
 
 ## 9. `.vscode` によるローカル限定の R CMD check NOTE

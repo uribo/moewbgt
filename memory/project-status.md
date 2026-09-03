@@ -33,7 +33,9 @@ updated: 2026-09-04
 
 **未確認のリスク（次の Codex セッションは先に確かめること）**: renv 1.2 はプロジェクトライブラリと sandbox を**ワークスペースの外**（`~/Library/Caches/org.R-project.R/R/renv/`）に置く。Codex は `workspace-write` で動くため（`.git` が読み取り専用だったのと同じ理由）、このリポジトリで Codex が `Rscript` を起動すると `.Rprofile` → `activate.R` がそのキャッシュパスへ書こうとしうる。**失敗するのか、警告だけなのか、通るのかは未確認。**塞がっていた場合の候補は 2 つ: `RENV_PATHS_ROOT` をワークスペース内に向ける、または `.codex/config.toml` の `[sandbox_workspace_write]` で当該パスを許可する。手元の緑をそのまま信じない。
 
-**残っている作業（次に行う 1 つ）**: `renv-update` が必要とするリポジトリ設定「Allow GitHub Actions to create and approve pull requests」（Settings > Actions > General）を有効にするか、有効にしないなら当該ワークフローを止めるかを決める。追加時点で `can_approve_pull_request_reviews: false` を確認済みで、**このままだと週 1 の scheduled 実行で `gh pr create` が落ちて赤くなる**。
+**リポジトリ設定は解消済み（2026-09-04）**: `renv-update` が必要とする「Allow GitHub Actions to create and approve pull requests」をユーザーが有効化し、`can_approve_pull_request_reviews: true` を確認した。**同じ操作で `default_workflow_permissions` が `read` → `write` にも変わっている** — 現行 4 本はすべて `permissions:` を明示しているので実害は無いが、`read` に戻すかは未決（`TODO.md` #8）。
+
+**残っている作業（次に行う 1 つ）**: `feat/renv` を push して PR を出し、`renv` ジョブの初回実行を見る。手元で確認できたのは内部整合性までで、Linux での restore 可能性（sf / pdftools の sysreqs を pak が解決できるか、GitHub から `ensurer` / `zipangu` を取れるか）と `timeout-minutes: 45` の妥当性は、その 1 回目が初めての証拠になる。
 
 **作業ツリーに残した他人の変更**: `.gitignore`（quarto の 3 行）と `data-raw/wbgt_pref_codes.R`（JMA の参照 URL 追記と `stringi::stri_trans_nfkc` による NFKC 正規化）は私の変更ではないので**コミットせずそのまま残してある**。どちらも lockfile を out-of-sync にはしない（`stringi` / `tidyselect` は既に記録済み）。
 
