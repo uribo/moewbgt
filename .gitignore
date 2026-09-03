@@ -16,9 +16,13 @@ CLAUDE.local.md
 # --- rendered / generated documents ---
 *.pdf
 README.html
+*_files/
 
 # --- data: raw downloads and license-restricted or oversized derivatives ---
 data-raw/*.csv
 
 # --- agent handoff briefs (see CLAUDE.md / global instructions) ---
 prompts/
+
+/.quarto/
+**/*.quarto_ipynb
