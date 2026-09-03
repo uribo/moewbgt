@@ -9,7 +9,7 @@
 **`R CMD check` は Status: OK**（0 errors / 0 warnings / 0 notes、2026-09-03 時点）。中身は [uribo/japan-heatstroke](https://github.com/uribo/japan-heatstroke) の `3b80b7a` からコピーした関数を出発点にしているが、以下は済んでいる: roxygen2 化と `man/` 生成、`NAMESPACE` の自動生成、`utils` の宣言。残る未整備:
 
 - `tests/` は `wbgt_guideline()` の境界回帰テストだけ（testthat 3e、18 assertion）。ネットワークを叩く `read_moe_alert()` / `read_moe_wbgt()` は未カバーで、季節運用のためフィクスチャ（`httptest2` / `vcr`）が要る
-- CI 未設置（`TODO.md` #3）
+- CI は 4 本（`R-CMD-check` / `renv` / `renv-update` / `air-format`）。`tests/` の薄さはそのままなので、緑は「壊れていない」以上を意味しない
 - 2026 年度に追加された **WebAPI に未対応**（現行コードは CSV 直リンク前提）
 
 このパッケージの主目的は WebAPI クライアントの提供にある。API の制約（1 リクエスト 25,000 件上限、JMA 系 `pref_cd`、季節運用）は README.md の表と PROVENANCE.md に整理してある。**設計に着手する前にその 2 つを読む。**
@@ -38,9 +38,20 @@ git show 7efd1b3:R/guides.R | shasum -a 256
 ## 開発コマンド
 
 ```sh
+Rscript -e 'renv::restore()'          # 固定された開発環境を復元
 Rscript -e 'roxygen2::roxygenise()'   # man/ と NAMESPACE を再生成
 air format .
 ```
+
+**依存は renv で固定してある**（`renv.lock`、`snapshot.type = "implicit"`）。`.Rprofile` が `renv/activate.R` を source するので、このディレクトリで R を起動すれば自動でプロジェクトライブラリに切り替わる。ライブラリの実体は repo の中ではなく `~/Library/Caches/org.R-project.R/R/renv/library/moewbgt-*/` にある（renv 1.2 の既定）。
+
+**`renv.lock` の R 4.6.1 は開発環境の固定であって `Depends: R (>= 4.1.0)` の下限ではない。**両者は別のことを主張している。下限を検証するのは `R-CMD-check` の `ubuntu-22.04` + R 4.1 ジョブだけで、そちらは lockfile を使わない（下記 CI 参照）。
+
+lockfile の範囲は DESCRIPTION より広い。コードスキャンが `data-raw/` と `tests/` と `_dependencies.R` を読むので、**`inst/extdata/` を生む導出スクリプトの環境も固定されている**。そこには **CRAN から外れた 2 パッケージ**が含まれる: `ensurer`（`data-raw/moe_wbgt_stations.R` の検証）と `zipangu`（`harmonize_prefecture_name()` / `jpnprefs`）。どちらも GitHub の commit SHA で記録してあり、**`renv.lock` が repo 内で唯一その出所を書いている場所**。消すと導出経路が再現不能になる。
+
+**`renv::install()` が `s2` のソースビルドで落ちることがある**（`openssl/opensslv.h` が無い）。pak 経由の renv は `upgrade = TRUE` で依存を強制更新するため、バイナリの無い新版を掴むと起きる。`options(renv.config.pak.enabled = FALSE)` を付けて renv 自前のインストーラに落とせば、キャッシュから link して通る。
+
+**pak のインストールはトランザクションで、1 つ落ちると全部巻き戻る。**成功表示を見た後でも `renv::status()` で確かめる（2026-09-04、`zipangu` のダウンロード失敗が同じ pass の `assertr` / `jmastats` ごと巻き戻した）。
 
 **`roxygenise()` は、パッケージがライブラリに入っていないと `[fn()]` 形式のリンクを解決できず**「Could not resolve link to topic」を出す。先に `R CMD INSTALL` してから `R_LIBS=<lib>` 付きで走らせれば消える（実体は未インストールが原因で、記述の誤りではない）。
 
@@ -53,7 +64,12 @@ Rscript -e 'library(moewbgt, lib.loc = "/tmp/lib"); testthat::test_dir("tests/te
 
 **R ファイル（`.R` / `.qmd`）を編集したら `air format .` を実行する。** `.claude/settings.json` の PostToolUse hook は Edit / Write ツール経由の編集にしか発火しないので、`sed` やヒアドキュメントで書き換えたときは手で走らせる。設定は `air.toml`（line-width 80）。
 
-CI は `.github/workflows/` の 2 本。`R-CMD-check` は 6 ジョブで、うち `ubuntu-22.04` + R 4.1 が `Depends: R (>= 4.1.0)` の下限を検証する唯一の手段なので**外さない**。`air-format` は `air format . --check` で、`R tests` に狭めると `data-raw/` のドリフトを見逃す。
+CI は `.github/workflows/` の 4 本。**`R-CMD-check` と `renv` は別のことを検証しており、片方をもう片方に寄せない。**
+
+- `R-CMD-check` — 6 ジョブ。依存は **DESCRIPTION から現行 CRAN に対して解決する**（CRAN 自身がやることであり、パッケージが利用者に対して負う契約）。うち `ubuntu-22.04` + R 4.1 が `Depends: R (>= 4.1.0)` の下限を検証する唯一の手段なので**外さない**。`renv/activate.R` は追跡されているため全ジョブが checkout し、リポジトリ直下で R が起動すると `.Rprofile` 経由で renv が有効化されて `.libPaths()` が空のプロジェクトライブラリに向く。これを止めているのが env の **`RENV_CONFIG_AUTOLOADER_ENABLED: FALSE`** で、**消すと 6 ジョブすべてが黙って renv 経路に移る**
+- `renv` — `renv.lock` が記録する R 版 1 つで restore し、`renv::status()` の同期を fail-loud で確かめてから `R CMD check` を回す（新しい checkout に座った人に対して repo が負う契約）。**`RENV_CONFIG_AUTOLOADER_ENABLED` を設定しない**のが正しい。CRAN から外れた `ensurer` / `zipangu` が今も解決できるかを試すのはこのジョブだけ
+- `renv-update` — 週 1 の lockfile 更新 PR。**リポジトリ設定「Allow GitHub Actions to create and approve pull requests」が有効でないと `gh pr create` が失敗する**（追加時点では無効）
+- `air-format` — `air format . --check`。`R tests` に狭めると `data-raw/` のドリフトを見逃す
 
 ## 構成
 
@@ -64,6 +80,7 @@ CI は `.github/workflows/` の 2 本。`R-CMD-check` は 6 ジョブで、う�
 - `man/` — roxygen2 の生成物。**直接編集しない**（`roxygenise()` で再生成する）
 - `data-raw/moe_wbgt_stations.R` — 提供サービスマニュアル PDF から地点マスタを抽出する導出スクリプト。出力先は `inst/extdata/`。各ブロックの `file.exists()` ガードにより、**既にあるファイルは再実行しても上書きされない**（凍結バイトの保護はこのガードに依存している。外さない）。2020 年版の生成経路は記録されていない（PROVENANCE「元データの出自」）
 - `data-raw/survey_tokyo2020.R` — オリパラ暑熱環境測定事業の資料取得。導出パイプラインの一部ではない
+- `renv.lock` — 開発環境の固定（`snapshot.type = "implicit"`）。**手で編集しない**（`renv::snapshot()` で再生成する）。`renv/settings.json` と `renv/activate.R` も追跡対象で、`renv/library/` 等は `renv/.gitignore` が除外する
 - `inst/extdata/` — 情報提供地点マスタ（`wbgt_stations*.csv`、840〜841 行）と都道府県ローマ字表（`wbgt_observe*.csv`、47 行）。**`wbgt_observe*` は実況値ではない**（名前と中身が食い違っている。PROVENANCE 問題 3）
 
 ### URL 体系（旧 CSV サービス）
@@ -111,12 +128,14 @@ CI は `.github/workflows/` の 2 本。`R-CMD-check` は 6 ジョブで、う�
 
 ## エージェント環境
 
-- `.claude/settings.json` — env（`R_ENVIRON_USER` とロケール）、資格情報ファイルの読み書き拒否、air の PostToolUse hook。**意図的に git 追跡している**（`.claude/settings.local.json` は追跡しない）
+- `.claude/settings.json` — env（`R_ENVIRON_USER` とロケール）、資格情報ファイルの読み書き拒否、air の PostToolUse hook、renv の 2 つの hook（PreToolUse で `renv.lock` を含むコミットを止めてパッケージ差分を見せる／Stop で `renv::status()` のドリフト検出）。**意図的に git 追跡している**（`.claude/settings.local.json` は追跡しない）
 - `.claude/skills/`、`.agents/skills/` — conf-macos の `deploy/manifest.tsv` で宣言的に配備した symlink（`r-modern-tidyverse`, `r-rlang-programming`）。手動 `ln -s` はしない。中身は gitignore され、`.gitignore` 自身だけが追跡される
 - `.codex/config.toml` — Codex の sandbox・環境変数ポリシー
 - `AGENTS.md` — Codex 固有の補足規約（本ファイルへのポインタ + 資格情報の扱い + 引き継ぎ手順）
 - `memory/project-status.md` の「引き継ぎ（HANDOFF）」欄 — Claude ↔ Codex の引き継ぎはこの欄を経由する。方針を決めた時・試行を捨てた時・検証を実行した時・セッションを終える時に更新する
 - `TODO.md` — 未決着の判断と次に行う作業。GitHub Issue はまだ使っていない
+- `.Rprofile` — renv の config（`auto.snapshot` / `pak.enabled` / `dependency.errors = "fatal"`）を**起動前**に置き、`renv/activate.R` を source し、そのあとでロケールを固定する。**この順序を入れ替えない**（`renv/activate.R` がロケールをシステム既定に戻すため、前に書くと無警告で無効化される）。テンプレートと違い `TZ` は**固定しない** — このファイルの環境変数は `R CMD check` の子プロセスに継承されるので、固定すると CRAN の UTC マシンが暴く時刻依存を手元で隠すことになる
+- `_dependencies.R` — **source されない**。コードスキャンからは見えない開発ツール（roxygen2 / rcmdcheck）を renv に見せるためだけのファイル。`.Rbuildignore` 済み。DESCRIPTION の `Suggests` に入れないのは、そこが「利用者に必要なもの」の宣言であり、6 ジョブの `R-CMD-check` が全ランナーに入れる対象だから
 
 `R_ENVIRON_USER=/dev/null` は資格情報を子プロセスに渡さないための設定だが、R はプロジェクト直下の環境ファイルを *user* 側として扱うため**プロジェクトの分ごと無効化する**。ロケールの固定をそこに頼れないので、`LC_COLLATE=C` / `LC_TIME=C` は `.claude/settings.json` と `.codex/config.toml` の両方に直接書いてある。**`LC_ALL` に統合しない**（`LC_CTYPE` まで上書きされ、`prefecture == "沖縄県"` のような比較が無警告で行を落とす）。
 

@@ -88,3 +88,24 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 - **`SHA256SUMS` が `.Rbuildignore` されており、インストール後のユーザーは `inst/extdata/` を検証できない**。同梱するなら kumagusu の `inst/provenance/` 方式（パスを書き換えた複製）が必要。あわせて、グローバル指示にある**定期的な `shasum -c` の実行と provenance への追記**の運用も未設定
 
 **扱い**: 1 件目は解消。2 件目（同梱と定期照合）は次に回す（#4 の前後で）
+
+## 8. renv
+
+**扱い: 完了（2026-09-04）** — `renv.lock`（114 パッケージ、`snapshot.type = "implicit"`）と `.Rprofile`・`_dependencies.R` を追加し、CI に `renv` / `renv-update` の 2 本を足した。方針の分担は `CLAUDE.md`「開発コマンド」の CI 節にある。
+
+- **`R-CMD-check` の 6 ジョブは DESCRIPTION 解決のまま**（ユーザー判断）。lockfile へ寄せると `Depends: R (>= 4.1.0)` の下限を検証する唯一の手段（R 4.1 ジョブ）が壊れ、devel / oldrel の意味も失われる。`renv/activate.R` が追跡されている以上 `.Rprofile` は全ジョブで読まれるので、env の `RENV_CONFIG_AUTOLOADER_ENABLED: FALSE` が実際の分離を担っている。**消すと 6 ジョブすべてが黙って renv 経路に移る**
+- **lockfile は `data-raw/` を含む**（ユーザー判断）。導出スクリプトは CRAN から外れた `ensurer` と `zipangu` に依存しており、その出所（GitHub の commit SHA）を書いている場所は repo 内で `renv.lock` だけ
+- lockfile の健全性は確認済み: null フィールド 0、CRAN 由来は全て `Repository: "CRAN"`、`renv::status()` は synchronized
+
+**残り**:
+
+- **`renv-update` はリポジトリ設定が要る。** 「Allow GitHub Actions to create and approve pull requests」（Settings > Actions > General）が無効のままだと `gh pr create` が `GitHub Actions is not permitted to create or approve pull requests` で落ちる。追加時点で `can_approve_pull_request_reviews: false` を確認済み。**扱い: 次に回す**（ユーザーが設定を切り替えるまで、この 1 本だけ初回のスケジュール実行で赤くなる）
+- `renv` ジョブの `timeout-minutes: 45` はこのリポジトリでの実測が無い見積り。数回走ったら実測値で見直す（超えたら外さずに数字を上げる）。**扱い: 次に回す**
+
+## 9. `.vscode` によるローカル限定の R CMD check NOTE
+
+手元で `R CMD build .` → `R CMD check` を回すと `checking for hidden files and directories ... NOTE`（`Found the following hidden files and directories: .vscode`）が出る。**CI では出ない。**`.vscode` はユーザーのグローバル gitignore（`~/.config/git/ignore`）で除外されていて git に入らず、clean checkout からビルドする CI の tarball には現れないため。`CLAUDE.md` の「Status: OK（0/0/0）」は CI と同じ条件を指しており、その主張は今も有効。
+
+**renv 導入による退行ではない**（2026-09-04、変更前後の tarball 内容で確認）。手元の NOTE を消したければ `.Rbuildignore` に `^\.vscode$` を 1 行足すだけだが、リポジトリの側の不具合ではない。
+
+**扱い: 次に回す**（renv のスコープ外なので、この作業では触っていない）
