@@ -76,9 +76,10 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 - 過去年度版のマスタ CSV とマニュアル PDF が今も配布されているか（配布されていなければ `inst/extdata/` の 8 ファイルは再取得不能な凍結バイト）
 - 直接配布されている `wbgt_point_master-20260515.csv` の列構成が `wbgt_stations*.csv` と一致するか
 - CSV 直リンク・`alert_record*.php` のパス体系が 2026 年度も同一か（PROVENANCE 問題 5）
-- **WebAPI の `date_to` が包含か排他か**。仕様書に記載が無い。クライアントは境界を重ねて**どちらでも正しく**動くようにしてあるので実装はブロックされないが、判明すれば `@param date_to` に意味を書ける。1 本叩けば決まる: `getSurveyData?data_type=0&location_type=1&wbgt_nos=44132&date_from=20260901000000&date_to=20260901000000` の `count` が 1 なら包含、0 なら排他
+- ~~**WebAPI の `date_to` が包含か排他か**~~ — **解消（2026-09-04）**。両端とも包含で、始点＝終点も有効（その時刻の 1 レコードを返す）。根拠と URL は `PROVENANCE.md`「上流の状況」。**ここに書いてあった `data_type=0` の 1 本では判定できなかった**（44132 は実測地点で推定値レコードを持たず、境界に関係なく 0 件になる）。`@param date_to`（`read_moe_survey()` / `read_moe_forecast()`）と `README.md` に反映済み。境界を 1 点重ねる設計は変えない（実測であって仕様の保証ではない）
+- **`date_from == date_to` を受け付けるか**。API は受け付けて 1 時刻分を返すが、`read_moe_survey()` / `read_moe_forecast()` の `to <= from` ガードは拒否する。`to < from` に緩めれば 1 時刻分の取得に 1 秒幅の範囲を書かずに済むが、現行の挙動変更になる
 
-**扱い**: 次に回す（`date_to` の確認は運用期間中＝2026-10-21 までに行う。それ以降は翌シーズンまで確かめられない）
+**扱い**: 上 3 件は次に回す。`date_from == date_to` の緩和はユーザー判断（緩めるなら `moe_api_intervals()` と二分の `span <= moe_api_min_span` は幅 0 でも停止するので実装上の障害は無い）
 
 ## 7. provenance の到達性
 

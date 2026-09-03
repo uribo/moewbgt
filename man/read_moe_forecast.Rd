@@ -23,7 +23,9 @@ read_moe_forecast(
 
 \item{date_from, date_to}{Range of forecast issue times. Date, POSIXct, and
 parseable character values are accepted and interpreted in Japan
-Standard Time. Supply both or neither.}
+Standard Time. Supply both or neither. Both ends are inclusive:
+forecasts issued at \code{date_to} itself are returned (measured against the
+live API on 2026-09-04; the manual does not say).}
 
 \item{origin_date}{One forecast issue time. Mutually exclusive with
 \code{date_from} and \code{date_to}.}
