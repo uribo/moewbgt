@@ -76,18 +76,50 @@ jobs:
       # that drift surfaces later as an unrelated-looking failure on someone
       # else's machine.
       #
-      # stopifnot() rather than a message: this must fail the run.
+      # The failure is reported field by field rather than by printing the
+      # status object. renv's own summary can say a package is out of sync and
+      # then render the difference as "unchanged" (seen on 2026-09-04 for the
+      # two GitHub packages), and printing the object dumps the entire lockfile
+      # -- several hundred lines in which the actual difference is invisible. A
+      # gate that cannot say what differs costs more than it saves.
       - name: Verify the lockfile still describes the project
         run: |
           Rscript - <<'RSCRIPT'
           status <- renv::status()
-          if (!isTRUE(status$synchronized)) {
-            print(status)
-            stop(
-              "renv.lock is out of sync with the project. ",
-              "Run renv::snapshot() locally and commit the result."
-            )
+          if (isTRUE(status$synchronized)) {
+            cat("renv.lock and the restored library agree.\n")
+            quit(status = 0)
           }
+
+          lock <- status$lockfile$Packages
+          lib <- status$library$Packages
+          for (pkg in union(names(lock), names(lib))) {
+            a <- lock[[pkg]]
+            b <- lib[[pkg]]
+            if (is.null(a)) {
+              cat(sprintf("[%s] in library but not in renv.lock\n", pkg))
+              next
+            }
+            if (is.null(b)) {
+              cat(sprintf("[%s] in renv.lock but not installed\n", pkg))
+              next
+            }
+            for (field in union(names(a), names(b))) {
+              x <- paste(as.character(a[[field]]), collapse = ", ")
+              y <- paste(as.character(b[[field]]), collapse = ", ")
+              if (!identical(x, y)) {
+                cat(sprintf(
+                  "[%s] %s: lockfile=%s library=%s\n",
+                  pkg, field, dQuote(x, FALSE), dQuote(y, FALSE)
+                ))
+              }
+            }
+          }
+
+          stop(
+            "renv.lock is out of sync with the restored library. ",
+            "See the field-level differences above."
+          )
           RSCRIPT
 
       # R CMD check under the pinned library, so "the lockfile restores" is
