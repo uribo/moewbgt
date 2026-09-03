@@ -2,7 +2,7 @@
 name: project-status
 description: 現在の進捗・直近の作業・次のステップ
 type: project
-updated: 2026-09-03
+updated: 2026-09-04
 ---
 
 # moewbgt — Status
@@ -11,7 +11,52 @@ updated: 2026-09-03
 
 > 別のエージェント（Codex 等）や次のセッションが**この欄だけ読めば再開できる**状態を保つ。残すのは今使っている判断だけで、検討しただけの案は書かない。方針を決めた時・試行を捨てた時・検証を実行した時・セッションを終える時に更新する。
 
-- **現在採用している方針**: エージェント環境を jpops / kumagusu（R パッケージ 2 例）ではなく research-project-template 寄りに構成した。`CLAUDE.md` + `AGENTS.md` + `.claude/settings.json` + `.codex/config.toml` + `memory/` + `TODO.md`。skill の symlink は conf-macos の `deploy/manifest.tsv` で scope=both を宣言し、`.claude/skills/` と `.agents/skills/` の両方へ配備する。`.claude/settings.json` はテンプレートから renv 関連の hook（PreToolUse の renv.lock ゲート、Stop の renv drift チェック）を落とした版にした — このパッケージは renv 未導入で、動かない hook は誤解の元になるため。CI は置かなかった: `man/` が無い段階で `R CMD check` を回しても赤で始まるだけで情報にならない。
+- **現在採用している方針**: エージェント環境を jpops / kumagusu（R パッケージ 2 例）ではなく research-project-template 寄りに構成した。`CLAUDE.md` + `AGENTS.md` + `.claude/settings.json` + `.codex/config.toml` + `memory/` + `TODO.md`。skill の symlink は conf-macos の `deploy/manifest.tsv` で scope=both を宣言し、`.claude/skills/` と `.agents/skills/` の両方へ配備する。`.claude/settings.json` は**テンプレートの renv 関連 hook（PreToolUse の renv.lock ゲート、Stop の renv drift チェック）を 2026-09-04 に戻した**（renv を導入したため。それ以前は「renv 未導入で動かない hook は誤解の元」という理由で落としていた）。
+
+### renv の導入（2026-09-04）— ブランチ `feat/renv`、PR [#3](https://github.com/uribo/moewbgt/pull/3)（レビュー待ち）
+
+**採用した方針: `R-CMD-check` と `renv` は別の契約を検証し、片方をもう片方に寄せない。**`R-CMD-check` の 6 ジョブは DESCRIPTION から現行 CRAN に解決する（CRAN 自身がやること＝パッケージが利用者に負う契約。`ubuntu-22.04` + R 4.1 が `Depends: R (>= 4.1.0)` を検証する唯一の手段）。新設の `renv` ジョブは `renv.lock` が記録する R 版 1 つで restore する（新しい checkout に座った人に repo が負う契約）。
+
+**実際の分離を担っているのは env の `RENV_CONFIG_AUTOLOADER_ENABLED: FALSE` 1 行**（`R-CMD-check.yaml`）。`renv/activate.R` は追跡されているので全ジョブが checkout し、リポジトリ直下で R が起動すれば `.Rprofile` 経由で renv が有効化されて `.libPaths()` が空のプロジェクトライブラリを向く。**これを消すと 6 ジョブすべてが黙って renv 経路に移り、下限の検証が失われる。**`renv.yaml` は逆に設定しないのが正しい。
+
+**ユーザー判断 2 件**（どちらも AskUserQuestion で確定）:
+
+1. renv は開発環境の固定に限定し、`R-CMD-check` matrix は DESCRIPTION 解決のまま触らない
+2. lockfile に `data-raw/` を含める（`snapshot.type = "implicit"`、114 パッケージ）。導出スクリプトは **CRAN から外れた `ensurer` と `zipangu`**（`harmonize_prefecture_name()` / `jpnprefs` を実使用）に依存しており、その出所を GitHub の commit SHA で書いている場所は repo 内で `renv.lock` だけ
+
+**検証した結果**: `renv::status()` synchronized / lockfile に null フィールド 0・CRAN 由来は全て `Repository: "CRAN"`・GitHub 2 件は RemoteSha 完全 / 新しい `.Rprofile` の下で `LC_COLLATE` `LC_TIME` とも `"C"` / renv ライブラリ下の `R CMD check` は 0 errors・0 warnings・**1 NOTE（`.vscode`、ローカル限定）**。`.vscode` はユーザーのグローバル gitignore で除外され git に入らないので CI の tarball には現れない（`TODO.md` #9）。**追加した `.Rprofile` / `_dependencies.R` / `renv.lock` による NOTE は出ていない。**
+
+**捨てた方法と再実行しない理由**:
+
+- `renv::install()` を pak 経由のまま使う → pak は `upgrade = TRUE` で依存を強制更新し、`s2` をソースビルドしようとして `openssl/opensslv.h` 不在で落ちる。`options(renv.config.pak.enabled = FALSE)` で renv 自前のインストーラに落とせばキャッシュから link して通る
+- pak の成功表示を信じる → **pak のインストールはトランザクションで、1 つ落ちると全部巻き戻る**。`zipangu` のダウンロード失敗が、同じ pass で「インストール済み」と表示された `assertr` / `jmastats` ごと巻き戻した。確認は必ず `renv::status()` で
+
+**未確認のリスク（次の Codex セッションは先に確かめること）**: renv 1.2 はプロジェクトライブラリと sandbox を**ワークスペースの外**（`~/Library/Caches/org.R-project.R/R/renv/`）に置く。Codex は `workspace-write` で動くため（`.git` が読み取り専用だったのと同じ理由）、このリポジトリで Codex が `Rscript` を起動すると `.Rprofile` → `activate.R` がそのキャッシュパスへ書こうとしうる。**失敗するのか、警告だけなのか、通るのかは未確認。**塞がっていた場合の候補は 2 つ: `RENV_PATHS_ROOT` をワークスペース内に向ける、または `.codex/config.toml` の `[sandbox_workspace_write]` で当該パスを許可する。手元の緑をそのまま信じない。
+
+**リポジトリ設定は解消済み（2026-09-04）**: `renv-update` が必要とする「Allow GitHub Actions to create and approve pull requests」をユーザーが有効化し、`can_approve_pull_request_reviews: true` を確認した。**同じ操作で `default_workflow_permissions` が `read` → `write` にも変わっている** — 現行 4 本はすべて `permissions:` を明示しているので実害は無いが、`read` に戻すかは未決（`TODO.md` #8）。
+
+**PR [#3](https://github.com/uribo/moewbgt/pull/3)、2026-09-04 に 8 ジョブすべて green。**`renv` ジョブは `renv.lock describes the project: 114 packages, all restored at the recorded version.` → `R CMD check` **Status: OK**（NOTE 0 件。`.vscode` の NOTE がローカル限定だという `TODO.md` #9 の判断もこれで裏づけられた）。
+
+**実証されたこと**:
+
+- **`RENV_CONFIG_AUTOLOADER_ENABLED: FALSE` のガードは効いている。** R 4.1 ジョブが通ったことがその証拠（効いていなければ空のプロジェクトライブラリを向いて落ちる）
+- **Linux での restore は成立する。** pak が GDAL/GEOS/PROJ/poppler 等を apt で解決し、sf・pdftools・s2・jmastats と GitHub の 2 件を含む 114 パッケージを 59.5 秒で入れた。`renv` ジョブ全体は 2m7s で、`timeout-minutes: 45` は十分過ぎるが、キャッシュの効かない更新時の値なので当面下げない
+
+**3 回連続で落ちた原因と、間違えた診断**:
+
+`renv::status()$synchronized` を関門にしていたが、**lockfile を書いた installer（手元の renv 自前）と CI が restore に使う installer（pak）は、GitHub 由来パッケージについて DESCRIPTION に書くフィールドが違う**。renv は `RemotePkgRef` も `NeedsCompilation` も書かず、pak は両方書く。**パッケージ名・版・commit SHA が完全に一致していても out of sync と報告される。**
+
+**1 回目の診断（`RemoteRef` がブランチ名だから）は誤りだった。**`ensurer` を `master` から SHA に固定しても落ち続け、報告が `[…@feb1defe: unchanged]` に変わっただけだった。原因が分かったのは、関門を**差分フィールドを名指しする**形に書き換えてから。「out of sync」としか言わない関門は、2 回分の空振りを生んだ。**失敗を報告する関門は、何が違うかを言えなければ関門の役を果たさない。**
+
+pak を外すのは代案にならない（sf / pdftools の sysreqs を解決しているのが pak で、apt のリストを手で持つと lockfile が変わるたびにずれる）。関門は実質を直接見る 3 検査に置き換えた: (1) コードスキャンが見つけたパッケージが全て lockfile にあるか、(2) lockfile の全てが restore されたか、(3) 版と（GitHub 由来なら）commit SHA が記録どおりか。**`renv::status()$synchronized` に戻さない。**
+
+SHA 固定自体（`ensurer` / `zipangu` とも `RemoteRef == RemoteSha`）は残す。今回の失敗の原因ではなかったが、「動く ref を不変識別子へ固定する」という規約に沿うため。**ブランチ名に戻さない。**
+
+**残っている作業（次に行う 1 つ）**: PR #3 をレビューしてマージする。マージ後は `default_workflow_permissions` を `read` に戻すかを決める（`TODO.md` #8）。
+
+**作業ツリーに残した他人の変更**: `.gitignore`（quarto の 3 行）と `data-raw/wbgt_pref_codes.R`（JMA の参照 URL 追記と `stringi::stri_trans_nfkc` による NFKC 正規化）は私の変更ではないので**コミットせずそのまま残してある**。どちらも lockfile を out-of-sync にはしない（`stringi` / `tidyselect` は既に記録済み）。
+
+**hook について**: 戻した PreToolUse の renv.lock ゲートは、この作業中のコミットでは**発火していない**（hook はセッション開始時に読み込まれるため）。次のセッションから有効になる前提で、動作確認はまだ済んでいない。
 
 PR [#1](https://github.com/uribo/moewbgt/pull/1) をマージ済み（merge commit `84b2662`、2026-09-03）。squash せずマージコミットにしたのは、4 コミットそれぞれに判断の根拠を書いてあるため。`main` の CI も success。
 

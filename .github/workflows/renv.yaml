@@ -1,0 +1,165 @@
+# Validates the pinned development environment.
+#
+# Division of labour with R-CMD-check.yaml: that workflow resolves dependencies
+# from DESCRIPTION against current CRAN across six R versions, which is the
+# contract a package owes its users. This one restores renv.lock on the single R
+# version the lockfile records, which is the contract the repository owes a
+# contributor sitting down at a fresh checkout. Neither substitutes for the
+# other, and neither is allowed to quietly become the other: R-CMD-check.yaml
+# sets RENV_CONFIG_AUTOLOADER_ENABLED=FALSE, this workflow deliberately does not.
+#
+# The lockfile is snapshot.type = "implicit", so it covers more than DESCRIPTION:
+# the data-raw/ derivation scripts that produce inst/extdata are in it too, and
+# two of their dependencies (ensurer, zipangu) are no longer on CRAN. This job is
+# the only thing that tests that those still resolve.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+name: renv
+
+permissions: read-all
+
+# Supersede an in-flight run when a PR branch is pushed again: only the newest
+# commit's result carries information. Restricted to pull_request so a run on
+# the default branch is never cancelled -- that history is what the badge and
+# any release audit read.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  renv:
+    runs-on: ubuntu-latest
+    # The default job timeout is 6 hours. r-lib/actions/setup-r@v2 stalled on
+    # 2026-08-19 and held runners until that cap, costing 360 runner-minutes per
+    # affected repository, so bound the job.
+    #
+    # 45 minutes rather than the 30 used by R-CMD-check: a cold restore here
+    # installs sf and pdftools with their system requirements (GDAL/GEOS/PROJ,
+    # poppler), which the check matrix never touches. setup-renv caches the
+    # library on the lockfile hash, so only the first run after a renv.lock
+    # change pays this. There are no observed times yet; once a few cold runs
+    # have gone through, raise the number rather than removing it if a
+    # legitimate run exceeds it.
+    timeout-minutes: 45
+
+    env:
+      # ensurer and zipangu restore from GitHub. Unauthenticated GitHub API
+      # requests are rate-limited per runner IP, which fails intermittently
+      # rather than consistently -- the worst failure mode to debug.
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          # "renv" resolves to the R version recorded in renv.lock. Hardcoding a
+          # version alongside a lockfile drifts silently, since the two agreeing
+          # today says nothing about tomorrow.
+          r-version: renv
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-renv@v2
+        env:
+          # Route restore through pak so system requirements are resolved and
+          # apt-installed in the same pass; renv's own installer does not do it.
+          RENV_CONFIG_PAK_ENABLED: TRUE
+
+      # What this gate asserts, and why it is not renv::status().
+      #
+      # The thing worth catching is drift: a package added to DESCRIPTION, to
+      # data-raw/ or to _dependencies.R without a snapshot, which otherwise
+      # surfaces later as an unrelated-looking failure on someone else's
+      # machine. renv::status()$synchronized does catch that, but it also
+      # compares installer bookkeeping, and the installer that writes the
+      # lockfile here is not the one that restores it: renv's own installer
+      # records neither RemotePkgRef nor NeedsCompilation for a GitHub package,
+      # pak records both. On 2026-09-04 that made three consecutive runs fail
+      # with the lockfile and the library agreeing on every field anyone cares
+      # about -- same package, same version, same commit SHA.
+      #
+      # Dropping pak is not the alternative: it is what resolves and
+      # apt-installs GDAL/GEOS/PROJ and poppler for sf and pdftools, and a
+      # hand-maintained apt list would drift the moment the lockfile changes.
+      #
+      # So the gate asserts the substance directly. Each of the three checks
+      # below fails the run and names what it found.
+      - name: Verify the lockfile still describes the project
+        run: |
+          Rscript - <<'RSCRIPT'
+          project <- read.dcf("DESCRIPTION")[1L, "Package"]
+          lib <- .libPaths()[1L]
+          lock <- renv::status()$lockfile$Packages
+          installed <- utils::installed.packages(lib.loc = lib)
+          problems <- character()
+
+          # 1. Every package the code scan finds is recorded. This is the drift
+          #    check: errors = "fatal" means a file the scanner cannot parse
+          #    stops the run rather than silently dropping its dependencies.
+          deps <- unique(renv::dependencies(errors = "fatal", progress = FALSE)$Package)
+          deps <- setdiff(deps, c(rownames(utils::installed.packages(priority = "base")), project))
+          uncovered <- setdiff(deps, names(lock))
+          if (length(uncovered)) {
+            problems <- c(problems, sprintf(
+              "used in the project but absent from renv.lock: %s",
+              paste(sort(uncovered), collapse = ", ")
+            ))
+          }
+
+          # 2. Every recorded package actually restored.
+          absent <- setdiff(names(lock), rownames(installed))
+          if (length(absent)) {
+            problems <- c(problems, sprintf(
+              "recorded in renv.lock but not installed: %s",
+              paste(sort(absent), collapse = ", ")
+            ))
+          }
+
+          # 3. What restored is what was recorded -- version for every package,
+          #    and the commit SHA for the two that come from GitHub, which is
+          #    the only thing pinning them means.
+          for (pkg in intersect(names(lock), rownames(installed))) {
+            want <- lock[[pkg]]$Version
+            got <- unname(installed[pkg, "Version"])
+            if (!identical(want, got)) {
+              problems <- c(problems, sprintf(
+                "%s: renv.lock records version %s, library has %s", pkg, want, got
+              ))
+            }
+            if (identical(lock[[pkg]]$Source, "GitHub")) {
+              d <- read.dcf(file.path(lib, pkg, "DESCRIPTION"))
+              got <- if ("RemoteSha" %in% colnames(d)) unname(d[1L, "RemoteSha"]) else NA_character_
+              if (!identical(lock[[pkg]]$RemoteSha, got)) {
+                problems <- c(problems, sprintf(
+                  "%s: renv.lock records commit %s, library has %s",
+                  pkg, lock[[pkg]]$RemoteSha, got
+                ))
+              }
+            }
+          }
+
+          if (length(problems)) {
+            cat(paste0("- ", problems, collapse = "\n"), "\n", sep = "")
+            stop("renv.lock does not describe the restored library.")
+          }
+          cat(sprintf(
+            "renv.lock describes the project: %d packages, all restored at the recorded version.\n",
+            length(lock)
+          ))
+          RSCRIPT
+
+      # R CMD check under the pinned library, so "the lockfile restores" is
+      # backed by "and the package works in what it restored". rcmdcheck passes
+      # .libPaths() through to the check subprocess, and R starts here in the
+      # repository root, so .Rprofile has already put the renv library first.
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          # No vignettes here, so no --compact-vignettes. --no-manual keeps the
+          # run from needing a LaTeX installation.
+          build_args: 'c("--no-manual")'
