@@ -1,0 +1,11 @@
+^data-raw$
+^PROVENANCE\.md$
+^air\.toml$
+^LICENSE\.md$
+^README\.Rmd$
+^\.github$
+^\.claude$
+^\.codex$
+^.*\.Rproj$
+^\.Rproj\.user$
+^SHA256SUMS$

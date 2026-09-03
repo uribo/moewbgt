@@ -1,0 +1,30 @@
+Package: moewbgt
+Title: Access Heat Index (WBGT) and Heat Stroke Alert Data from the Japanese
+    Ministry of the Environment
+Version: 0.0.0.9000
+Authors@R:
+    person("Shinya", "Uryu", email = "uryu.shinya@tokushima-u.ac.jp",
+           role = c("aut", "cre"))
+Description: Retrieve and parse heat index (WBGT) forecast and observed values,
+    and heat stroke alert announcements, published by the Heat Illness
+    Prevention Information site of the Japanese Ministry of the Environment
+    (<https://www.wbgt.env.go.jp/>). The site serves seasonal CSV downloads and,
+    since fiscal 2026, a WebAPI.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends:
+    R (>= 4.1.0)
+Imports:
+    dplyr,
+    glue,
+    hms,
+    lubridate,
+    memoise,
+    purrr,
+    readr,
+    rlang,
+    rvest,
+    stringr,
+    tidyr,
+    tidyselect
+Roxygen: list(markdown = TRUE)

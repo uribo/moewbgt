@@ -1,0 +1,5 @@
+# air configuration — https://posit-dev.github.io/air/
+# `.git/` and similar are skipped automatically via air's built-in
+# `default-exclude`, so no explicit `exclude` list is needed.
+[format]
+line-width = 80
