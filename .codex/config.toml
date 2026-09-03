@@ -1,0 +1,28 @@
+# Project-local Codex defaults. Applied only when this repository is trusted.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+# Keep credentials out of model-initiated child processes. R_ENVIRON_USER also
+# prevents R from automatically loading the gitignored project environment file.
+#
+# That suppression has a side effect worth naming: R treats the environment file
+# in the working directory as the *user* one, so pointing R_ENVIRON_USER at
+# /dev/null disables the project's copy too -- including any LC_COLLATE and
+# LC_TIME pins it would carry. Both are therefore set here as well, so agent
+# sessions get the same collation and the same date-part names as a human
+# terminal. Never merge them into LC_ALL: that also overrides LC_CTYPE, so
+# non-ASCII comparisons stop matching and drop rows with no error. See the
+# "エージェント環境" section of CLAUDE.md.
+[shell_environment_policy]
+inherit = "core"
+ignore_default_excludes = false
+exclude = [
+  "*_API_KEY",
+  "*_TOKEN",
+  "*_SECRET",
+  "*_PASSWORD",
+  "AWS_*",
+  "AZURE_*",
+  "GOOGLE_APPLICATION_CREDENTIALS",
+]
+set = { R_ENVIRON_USER = "/dev/null", LC_COLLATE = "C", LC_TIME = "C" }

@@ -9,3 +9,8 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^SHA256SUMS$
+^CLAUDE\.md$
+^AGENTS\.md$
+^TODO\.md$
+^\.agents$
+^memory$
