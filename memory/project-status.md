@@ -13,6 +13,8 @@ updated: 2026-09-03
 
 - **現在採用している方針**: エージェント環境を jpops / kumagusu（R パッケージ 2 例）ではなく research-project-template 寄りに構成した。`CLAUDE.md` + `AGENTS.md` + `.claude/settings.json` + `.codex/config.toml` + `memory/` + `TODO.md`。skill の symlink は conf-macos の `deploy/manifest.tsv` で scope=both を宣言し、`.claude/skills/` と `.agents/skills/` の両方へ配備する。`.claude/settings.json` はテンプレートから renv 関連の hook（PreToolUse の renv.lock ゲート、Stop の renv drift チェック）を落とした版にした — このパッケージは renv 未導入で、動かない hook は誤解の元になるため。CI は置かなかった: `man/` が無い段階で `R CMD check` を回しても赤で始まるだけで情報にならない。
 
+TODO #3（CI）完了。jpops の 2 ワークフローを移植し、PR で自己検証される状態にした。**R 4.1 のジョブは `Depends: R (>= 4.1.0)` を検証する唯一の手段**なので matrix から外さない。ローカルの `R CMD check` は macOS の R 4.6.1 一本しか通っておらず、宣言した下限は CI が初めて叩く。
+
 TODO #2（roxygen2 化）完了。`R CMD check` は **Status: OK**（0 errors / 0 warnings / 0 notes）、テスト 18/18。手書き `NAMESPACE` は削除し roxygen2 生成に置換、`man/*.Rd` 8 件を生成。`utils` を Imports に追加して `utils::download.file()` に修飾、未使用ローカル `domain_url` を削除、裸の `contains()` を `tidyselect::` で修飾、`"\u767a\u8868\u56de\u6570"` をエスケープ化、列名 9 個を `R/moewbgt-package.R` の `globalVariables()` に集約。
 
 **消してはいけないもの**: `R/moe_alert.R` の `@importFrom rvest read_html`。`.onLoad()` の再束縛でインストール後の名前空間から `rvest::` が見えなくなるため、無いと dependencies の NOTE が復活する（再束縛を外して実証済み）。理由は当該行の直上コメントと `CLAUDE.md` にも書いてある。
@@ -23,7 +25,7 @@ PROVENANCE 問題 3（`wbgt_observe*.csv` の改名）は**改名しない**で�
 
 TODO #1 は選択肢 1 で決着済み（2026-09-03）。`SHA256SUMS` は `inst/extdata/` の 8 ファイル専用になり、コード 5 行のダイジェストは `PROVENANCE.md` の履歴表へ移した。決め手は 13 行が初期コミット `7efd1b3` の中身と 13/13 一致し、そのコミットが push 済みだったこと — 記録は既に git がオフサイト付きで持っており、ファイルが足していたのは「コミットでは素通りする改変を止める関門」だけで、それはコード側では意図した変更に発砲する向きだった。**`SHA256SUMS` にコード行を戻さない。**
 
-- **次に行う作業（1 つ）**: `TODO.md` #3 — jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植する。#2 完了により**両方とも緑で始められる**。
+- **次に行う作業（1 つ）**: PR の CI 結果を確認する。とくに `ubuntu-22.04` + R 4.1 のジョブ — 宣言した下限がこれまで一度も検証されていないため、ここだけは赤になりうる。緑を確認したら `TODO.md` #4（WebAPI クライアント）へ。
 
 - **試して失敗したこと**: ヒアドキュメントで `.claude/settings.json` や `CLAUDE.md` を書こうとすると、グローバルの PreToolUse hook が「Bash コマンドが `.Renviron` を参照している」として拒否する。Write ツールで書けば通る（hook が見るのは Bash の `command` 文字列と Read/Edit/Write の `file_path` だけで、Write の中身は見ない）。同じ理由で、散文中は資格情報ファイル名の直書きを避けて「プロジェクトの環境ファイル」と書いてある。
 - **未確認の項目**: `TODO.md` #7 の 2 件目（`SHA256SUMS` が `.Rbuildignore` されておりインストール後に検証できない）。1 件目（コピー元 `3b80b7a` の到達性）は解消済み — japan-heatstroke は push 済みで、当初「未 push」と記録したのは push 前の時点を観測していたため（2026-09-03 訂正）。`.Rbuildignore` に足した 5 パターン（`CLAUDE.md` / `AGENTS.md` / `TODO.md` / `.agents` / `memory`）は `R CMD build` で検証済み — `man/` が無くても `build` は通るので、`check` を待たずに確かめられる。
@@ -33,7 +35,7 @@ TODO #1 は選択肢 1 で決着済み（2026-09-03）。`SHA256SUMS` は `inst/
 
 - **現在フェーズ**: 引き継いだ既知の問題の解消。実装（WebAPI クライアント）は未着手
 - **直近の作業**: エージェント環境の新規作成 → TODO #1（`SHA256SUMS` の切り分け）→ TODO #5（PROVENANCE 問題 1・2・7 の修正と回帰テスト）
-- **次のステップ**: CI（#3）→ WebAPI クライアント設計（#4、フィクスチャによるネットワークテストを含む）
+- **次のステップ**: PR の CI 確認 → WebAPI クライアント設計（#4、フィクスチャによるネットワークテストを含む）
 - **ブロッカー**: `TODO.md` を参照
 
 **How to apply:** セッション終了時に進捗が変化したらこのファイルを更新する。「引き継ぎ（HANDOFF）」欄は方針を決めた時・試行を捨てた時・検証を実行した時にも更新し、Codex 等へ引き継ぐときはこの欄を先に読ませる（グローバル指示「Codex への委任と引き継ぎ」）。

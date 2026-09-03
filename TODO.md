@@ -25,11 +25,13 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 
 残るテスト整備は #3 ではなくこの先の課題として: ネットワークを叩く `read_moe_alert()` / `read_moe_wbgt()` は季節運用のためフィクスチャ（`httptest2` / `vcr`）が要り、#4 の論点と共通なのでそちらで扱う。
 
-## 3. CI 未設置
+## 3. CI
 
-jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植する。#2 が完了して `R CMD check` が Status: OK になったので、**両方とも緑で始められる**（当初「`R-CMD-check` は赤で始まる」と書いていた前提は解消した）。
+**扱い: 完了（2026-09-03）** — jpops の 2 ワークフローを移植した。#2 完了により**両方とも緑で始まる**（当初「`R-CMD-check` は `man/` 整備までは赤」としていた前提は解消済み）。
 
-**扱い**: 着手可。次に行う作業
+- `.github/workflows/R-CMD-check.yaml` — 6 ジョブ（macOS / Windows / Linux の release、Linux の devel・oldrel-1、`ubuntu-22.04` + R 4.1）。**R 4.1 のジョブは `DESCRIPTION` の `Depends: R (>= 4.1.0)` を検証する唯一の手段**なので外さない。vignette が無いので `build_args` は `--no-manual` のみ
+- `.github/workflows/air-format.yaml` — `air format . --check`。`R tests` ではなく全体を見るのは、`air.toml` に exclude が無く `data-raw/` も整形対象だから。狭めると `data-raw/` のドリフトを CI が見逃す
+- どちらも `timeout-minutes` を入れてある（既定の 6 時間は、ハングしたときに 360 runner-minutes を捨てる）。**このリポジトリでの実測はまだ無い**ので、数回走らせてから見直す。超えたら外すのではなく数字を上げる
 
 ## 4. WebAPI クライアント（本命）
 
@@ -41,7 +43,7 @@ jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植する。#2
 - 公開出力の単位（PROVENANCE 問題 4）。`wbgt_WO` は小数、`forecast_val` は ×10 に見える
 - `wbgt_WI`（データ品質情報 0〜4）は欠測補完の有無を示すので落とさない
 
-**扱い**: 次に回す（#3 の後）
+**扱い**: 次に回す。#1〜#3 が片付いたので、これが次の本題
 
 ## 5. 引き継いだ既知の問題 7 件
 

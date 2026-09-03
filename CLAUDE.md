@@ -53,7 +53,7 @@ Rscript -e 'library(moewbgt, lib.loc = "/tmp/lib"); testthat::test_dir("tests/te
 
 **R ファイル（`.R` / `.qmd`）を編集したら `air format .` を実行する。** `.claude/settings.json` の PostToolUse hook は Edit / Write ツール経由の編集にしか発火しないので、`sed` やヒアドキュメントで書き換えたときは手で走らせる。設定は `air.toml`（line-width 80）。
 
-CI は未設置。`man/` が整い `R CMD check` が Status: OK になったので、jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植できる状態にある（`TODO.md` #3）。
+CI は `.github/workflows/` の 2 本。`R-CMD-check` は 6 ジョブで、うち `ubuntu-22.04` + R 4.1 が `Depends: R (>= 4.1.0)` の下限を検証する唯一の手段なので**外さない**。`air-format` は `air format . --check` で、`R tests` に狭めると `data-raw/` のドリフトを見逃す。
 
 ## 構成
 
