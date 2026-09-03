@@ -19,3 +19,6 @@ README.html
 
 # --- data: raw downloads and license-restricted or oversized derivatives ---
 data-raw/*.csv
+
+# --- agent handoff briefs (see CLAUDE.md / global instructions) ---
+prompts/
