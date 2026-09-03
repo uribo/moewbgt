@@ -15,9 +15,11 @@ updated: 2026-09-03
 
 TODO #5 のうち 3 件（PROVENANCE 問題 1・2・7）を 2026-09-03 に解消した。7 = `wbgt_guideline()` の帯を降順の `>=` 連鎖にして半開区間として連続させた（旧実装は 15〜40 の 0.1 刻みで 18 点が `NA`）。2 = memoise をトップレベルから `.onLoad()` へ（`R/moe_alert.R` 末尾に置き、collation 順に依存させていない）。1 = `data-raw/` の出力先を `inst/extdata/` へ（`file.exists()` ガードが凍結バイトを守るので外さない）。あわせて testthat 3e を導入し `tests/testthat/test-guides.R` を追加。残る 3・4・5・6 は `TODO.md` #5 に扱いを明記した。
 
+PROVENANCE 問題 3（`wbgt_observe*.csv` の改名）は**改名しない**でユーザー判断が確定した（2026-09-03）。公開リポジトリの破壊的変更であり、API 移行でファイルごと不要になりうるため、改名のコストを払う前に前提が変わる。名前と中身の食い違いという事実は残るので、`README.md` / `PROVENANCE.md` / `CLAUDE.md` の記述を薄めないこと。これで TODO #5 に未処理は無い。
+
 TODO #1 は選択肢 1 で決着済み（2026-09-03）。`SHA256SUMS` は `inst/extdata/` の 8 ファイル専用になり、コード 5 行のダイジェストは `PROVENANCE.md` の履歴表へ移した。決め手は 13 行が初期コミット `7efd1b3` の中身と 13/13 一致し、そのコミットが push 済みだったこと — 記録は既に git がオフサイト付きで持っており、ファイルが足していたのは「コミットでは素通りする改変を止める関門」だけで、それはコード側では意図した変更に発砲する向きだった。**`SHA256SUMS` にコード行を戻さない。**
 
-- **次に行う作業（1 つ）**: `TODO.md` #3 の 1 件目、`wbgt_observe*.csv` の改名をユーザーが判断する（公開リポジトリの破壊的変更なので単独で決めない）。判断待ちの間に進めるなら `TODO.md` #2（roxygen 化 + `man/` 生成 + `utils` の `importFrom`）。
+- **次に行う作業（1 つ）**: `TODO.md` #2 — roxygen2 化して `man/` を生成し、`utils` を `Imports` に足して `utils::download.file()` に修飾する。これが通れば `R CMD check` が初めて意味を持ち、#3（CI）に進める。
 
 - **試して失敗したこと**: ヒアドキュメントで `.claude/settings.json` や `CLAUDE.md` を書こうとすると、グローバルの PreToolUse hook が「Bash コマンドが `.Renviron` を参照している」として拒否する。Write ツールで書けば通る（hook が見るのは Bash の `command` 文字列と Read/Edit/Write の `file_path` だけで、Write の中身は見ない）。同じ理由で、散文中は資格情報ファイル名の直書きを避けて「プロジェクトの環境ファイル」と書いてある。
 - **未確認の項目**: `TODO.md` #7 の 2 件（コピー元 `3b80b7a` が未 push でこの端末にしか無い／`SHA256SUMS` が `.Rbuildignore` されておりインストール後に検証できない）。どちらも moewbgt 自身のバイトの安全性には影響しない。`.Rbuildignore` に足した 5 パターン（`CLAUDE.md` / `AGENTS.md` / `TODO.md` / `.agents` / `memory`）は `R CMD build` で検証済み — `man/` が無くても `build` は通るので、`check` を待たずに確かめられる。
@@ -27,7 +29,7 @@ TODO #1 は選択肢 1 で決着済み（2026-09-03）。`SHA256SUMS` は `inst/
 
 - **現在フェーズ**: 引き継いだ既知の問題の解消。実装（WebAPI クライアント）は未着手
 - **直近の作業**: エージェント環境の新規作成 → TODO #1（`SHA256SUMS` の切り分け）→ TODO #5（PROVENANCE 問題 1・2・7 の修正と回帰テスト）
-- **次のステップ**: TODO #3 の改名判断 → `man/` 整備（roxygen2 化）→ CI → WebAPI クライアント設計
+- **次のステップ**: `man/` 整備（roxygen2 化、#2）→ CI（#3）→ WebAPI クライアント設計（#4）
 - **ブロッカー**: `TODO.md` を参照
 
 **How to apply:** セッション終了時に進捗が変化したらこのファイルを更新する。「引き継ぎ（HANDOFF）」欄は方針を決めた時・試行を捨てた時・検証を実行した時にも更新し、Codex 等へ引き継ぐときはこの欄を先に読ませる（グローバル指示「Codex への委任と引き継ぎ」）。

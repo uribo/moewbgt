@@ -90,7 +90,7 @@ moewbgt 側のバイトは `7efd1b3` が push 済みなので失われないが�
 
 1. ~~**`data-raw/moe_wbgt_stations.R` の出力先が `here::here("data/…")` のまま**~~ — **解消（2026-09-03）**。出力先を `inst/extdata/` に変更した（12 箇所）。各ブロックの `file.exists()` ガードは残してあるので、再実行しても既存の凍結バイトは上書きされない
 2. ~~**`R/moe_alert.R` の `read_moe_alert <- memoise::memoise(...)` がトップレベルにある**~~ — **解消（2026-09-03）**。素の関数定義に戻し、同ファイル末尾の `.onLoad()` で memoise するようにした。インストール後に `memoise::is.memoised(read_moe_alert)` が `TRUE` を返すことを確認済み
-3. **`wbgt_observe*.csv` の名前が内容と食い違う**（実況値ではなく都道府県ローマ字表）。かつ 2022〜2024 年版は同一バイト。旧 CSV サービス専用の遺物であり、API 移行後は不要になる可能性が高い
+3. **`wbgt_observe*.csv` の名前が内容と食い違う**（実況値ではなく都道府県ローマ字表）。かつ 2022〜2024 年版は同一バイト。旧 CSV サービス専用の遺物であり、API 移行後は不要になる可能性が高い — **改名しない判断（2026-09-03、ユーザー）**。公開リポジトリの破壊的変更であり、API 移行でファイルごと不要になりうるため。食い違いは記述で担保する（本表・`README.md`・`CLAUDE.md`）
 4. **単位の規約が未決着**。`getSurveyData` の `wbgt_WO` は `"26.7"` の小数、`getForecastData` の `forecast_val` は `"40"` `"-10"` で ×10 に見える。`parse_moe_wbgt_csv(file_type = "1-A")` も換算せず `col_double()` で読むだけ
 5. **CSV 直リンク・`alert_record*.php` のパス体系が 2026 年度も同一かは未確認**
 6. **`man/` が無い**。`NAMESPACE` は手書きなので `R CMD check` は undocumented exports で警告する
