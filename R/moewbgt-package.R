@@ -15,11 +15,24 @@ utils::globalVariables(
     "...1",
     "Date",
     "Time",
+    "area_cd",
     "datetime",
+    "flag",
+    "forecast_time",
+    "forecast_val",
+    "pref_cd",
+    "reference_time",
     "station",
     "station_no",
     "time",
     "type",
-    "wbgt"
+    "wbgt",
+    "wbgt_class",
+    "wbgt_date",
+    "wbgt_no",
+    "wbgt_Tg",
+    "wbgt_Tw",
+    "wbgt_WI",
+    "wbgt_WO"
   )
 )
