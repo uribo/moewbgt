@@ -1,25 +1,34 @@
-read_moe_alert <- memoise::memoise(
-  function(year) {
-    if (
-      dplyr::between(year, 2019, lubridate::year(lubridate::today())) == FALSE
-    ) {
-      rlang::abort("The data is available only after 2019 to the present.")
-    }
-    if (lubridate::year(lubridate::today()) == year) {
-      tgt_url <-
-        "https://www.wbgt.env.go.jp/alert_record.php"
-    } else {
-      tgt_url <-
-        glue::glue("https://www.wbgt.env.go.jp/alert_record_{year}.php")
-    }
-    x <-
-      rvest::read_html(tgt_url)
-    x |>
-      rvest::html_nodes(css = "#maincontent > div > table") |>
-      rvest::html_table() |>
-      purrr::pluck(1)
+read_moe_alert <- function(year) {
+  if (
+    dplyr::between(year, 2019, lubridate::year(lubridate::today())) == FALSE
+  ) {
+    rlang::abort("The data is available only after 2019 to the present.")
   }
-)
+  if (lubridate::year(lubridate::today()) == year) {
+    tgt_url <-
+      "https://www.wbgt.env.go.jp/alert_record.php"
+  } else {
+    tgt_url <-
+      glue::glue("https://www.wbgt.env.go.jp/alert_record_{year}.php")
+  }
+  x <-
+    rvest::read_html(tgt_url)
+  x |>
+    rvest::html_nodes(css = "#maincontent > div > table") |>
+    rvest::html_table() |>
+    purrr::pluck(1)
+}
+
+# Memoise at load time, not at build time. Wrapping the definition directly
+# (`read_moe_alert <- memoise::memoise(function(year) ...)`) runs memoise()
+# while the package is being installed, so the cache is created once and
+# serialised into the namespace: every session then shares a cache built on the
+# machine that did the install. Doing it in .onLoad() gives each session its
+# own. This lives next to the function it wraps so the ordering dependency is
+# local rather than resting on the collation order of R/.
+.onLoad <- function(libname, pkgname) {
+  read_moe_alert <<- memoise::memoise(read_moe_alert)
+}
 
 alert_to_long <- function(df, year) {
   alert_type_n <-

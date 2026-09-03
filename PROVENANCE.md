@@ -86,12 +86,12 @@ moewbgt 側のバイトは `7efd1b3` が push 済みなので失われないが�
 
 ## 引き継いだ既知の問題（コピー時点では未修正）
 
-コピーは原文どおりで、以下はいずれも**このリポジトリで直す**課題として持ち込まれている。
+コピーは原文どおりで、以下はいずれも**このリポジトリで直す**課題として持ち込まれている。取り消し線の項目は解消済み（残り 4 件: 3・4・5・6）。
 
-1. **`data-raw/moe_wbgt_stations.R` の出力先が `here::here("data/…")` のまま**。CSV の置き場は `inst/extdata/` に変わったので、再実行しても読み込み側と揃わない
-2. **`R/moe_alert.R` の `read_moe_alert <- memoise::memoise(...)` がトップレベルにある**。パッケージではインストール時にキャッシュが固定されてしまうため、`.onLoad()` の中で memoise する形に直す必要がある
+1. ~~**`data-raw/moe_wbgt_stations.R` の出力先が `here::here("data/…")` のまま**~~ — **解消（2026-09-03）**。出力先を `inst/extdata/` に変更した（12 箇所）。各ブロックの `file.exists()` ガードは残してあるので、再実行しても既存の凍結バイトは上書きされない
+2. ~~**`R/moe_alert.R` の `read_moe_alert <- memoise::memoise(...)` がトップレベルにある**~~ — **解消（2026-09-03）**。素の関数定義に戻し、同ファイル末尾の `.onLoad()` で memoise するようにした。インストール後に `memoise::is.memoised(read_moe_alert)` が `TRUE` を返すことを確認済み
 3. **`wbgt_observe*.csv` の名前が内容と食い違う**（実況値ではなく都道府県ローマ字表）。かつ 2022〜2024 年版は同一バイト。旧 CSV サービス専用の遺物であり、API 移行後は不要になる可能性が高い
 4. **単位の規約が未決着**。`getSurveyData` の `wbgt_WO` は `"26.7"` の小数、`getForecastData` の `forecast_val` は `"40"` `"-10"` で ×10 に見える。`parse_moe_wbgt_csv(file_type = "1-A")` も換算せず `col_double()` で読むだけ
 5. **CSV 直リンク・`alert_record*.php` のパス体系が 2026 年度も同一かは未確認**
 6. **`man/` が無い**。`NAMESPACE` は手書きなので `R CMD check` は undocumented exports で警告する
-7. **`wbgt_guideline()` が整数以外で `NA` を返す区間がある**。`dplyr::between(x, 28, 30)` / `between(x, 25, 27)` で区切っているため、`27.5` や `30.5` はどの条件にも当たらない。境界は `>=` と `<` で連続にすべき
+7. ~~**`wbgt_guideline()` が整数以外で `NA` を返す区間がある**~~ — **解消（2026-09-03）**。降順の `>=` 連鎖に置き換え、指針の帯を半開区間として連続させた。旧実装は 15〜40 を 0.1 刻みで走らせると 18 点が `NA` になっていた。回帰テストは `tests/testthat/test-guides.R`

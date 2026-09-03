@@ -14,9 +14,11 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 
 ## 2. `man/` が無く `R CMD check` が通らない
 
-roxygen コメントが 1 行も無く、`NAMESPACE` は手書き。exports 7 個が undocumented。`utils::download.file()` の `importFrom` も無い。
+roxygen コメントが 1 行も無く、`NAMESPACE` は手書き。exports 7 個が undocumented。`utils::download.file()` の `importFrom` も無い（`utils` を `Imports` に足して `utils::` で修飾する。この項目でまとめて掃除する）。
 
-**扱い**: 次に回す（#1 決着後、WebAPI クライアント設計の前に着手）
+`tests/` は #5 の対応で `wbgt_guideline()` の境界回帰テストだけ入った（testthat 3e、`Config/testthat/edition: 3`）。他の関数は未カバーで、特にネットワークを叩く `read_moe_alert()` / `read_moe_wbgt()` は季節運用のためフィクスチャ（`httptest2` / `vcr`）が要る（#4 の論点と共通）。
+
+**扱い**: 次に回す（WebAPI クライアント設計の前に着手）
 
 ## 3. CI 未設置
 
@@ -38,9 +40,20 @@ jpops の `.github/workflows/{R-CMD-check,air-format}.yaml` を移植する。`a
 
 ## 5. 引き継いだ既知の問題 7 件
 
-`PROVENANCE.md` の「引き継いだ既知の問題」を参照。7 番（`wbgt_guideline()` が `27.5` や `30.5` で `NA` を返す）は実害のあるバグなので優先。
+`PROVENANCE.md` の「引き継いだ既知の問題」を参照。**7 件のうち 3 件（1・2・7）を 2026-09-03 に解消した。**
 
-**扱い**: 着手可（#1 が決着し、ブロックは外れている）
+- **7**（`wbgt_guideline()` が `27.5` や `30.5` で `NA`）— 降順の `>=` 連鎖に置換。回帰テスト `tests/testthat/test-guides.R` を追加（testthat 3e、18 assertion）。あわせて 4 語を Unicode エスケープに変換
+- **2**（memoise がトップレベル）— 素の関数 + `.onLoad()` に変更。`R/moe_alert.R` の末尾に置き、collation 順に依存させていない
+- **1**（`data-raw/` の出力先）— `inst/extdata/` に変更（12 箇所）。`file.exists()` ガードにより既存の凍結バイトは上書きされない
+
+**残り 4 件の扱い**:
+
+- **3**（`wbgt_observe*.csv` の改名）— **要判断・ユーザー**。公開リポジトリの破壊的変更にあたる。japan-heatstroke 側でも同じ理由で保留されている（同 repo `TODO.md` 項目 1）。単独で決めない
+- **4**（単位の規約）— #4（WebAPI クライアント）の設計時に決める。先に決めても API のレスポンスを見ないと確定しない
+- **5**（パス体系が 2026 年度も同一か）— 外部アクセスを伴う。#6 と併せて確認する
+- **6**（`man/` が無い）— #2 と同一の項目。そちらで扱う
+
+**扱い**: 1・2・7 は完了。3 はユーザー判断待ち、4・5・6 は他項目に統合済み
 
 ## 6. 上流の未確認事項
 

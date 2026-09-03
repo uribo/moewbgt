@@ -128,7 +128,7 @@ make_wbgt_observe <- function(pdf) {
 
 
 # R6 (2024) ---------------------------------------------------------------
-if (!file.exists(here::here("data/wbgt_stations2024.csv"))) {
+if (!file.exists(here::here("inst/extdata/wbgt_stations2024.csv"))) {
   # Press Release: https://www.env.go.jp/press/press_03083.html
   if (!file.exists(here::here("data-raw/R06_wbgt_data_service_manual.pdf"))) {
     download.file(
@@ -153,9 +153,9 @@ if (!file.exists(here::here("data/wbgt_stations2024.csv"))) {
     ensurer::ensure(nrow(.) == 0L)
 
   df_wbgt_stations |>
-    readr::write_csv(here::here("data/wbgt_stations2024.csv"))
+    readr::write_csv(here::here("inst/extdata/wbgt_stations2024.csv"))
 }
-if (!file.exists(here::here("data/wbgt_observe2024.csv"))) {
+if (!file.exists(here::here("inst/extdata/wbgt_observe2024.csv"))) {
   if (!file.exists(here::here("data-raw/R06_wbgt_data_service_manual.pdf"))) {
     download.file(
       "https://www.wbgt.env.go.jp/man15NH/R06_wbgt_data_service_manual.pdf",
@@ -165,12 +165,12 @@ if (!file.exists(here::here("data/wbgt_observe2024.csv"))) {
   df_wbgt_observe2024 <-
     make_wbgt_observe(here::here("data-raw/R06_wbgt_data_service_manual.pdf"))
   df_wbgt_observe2024 |>
-    readr::write_csv(here::here("data/wbgt_observe2024.csv"))
+    readr::write_csv(here::here("inst/extdata/wbgt_observe2024.csv"))
 }
 
 
 # R5 (2023) ---------------------------------------------------------------
-if (!file.exists(here::here("data/wbgt_stations2023.csv"))) {
+if (!file.exists(here::here("inst/extdata/wbgt_stations2023.csv"))) {
   # https://www.env.go.jp/press/press_01497.html
 
   if (!file.exists(here::here("data-raw/R05_wbgt_data_service_manual.pdf"))) {
@@ -191,10 +191,10 @@ if (!file.exists(here::here("data/wbgt_stations2023.csv"))) {
     join_jma_stations(d) |>
     ensurer::ensure(nrow(.) == 841L)
   df_wbgt_stations |>
-    readr::write_csv(here::here("data/wbgt_stations2023.csv"))
+    readr::write_csv(here::here("inst/extdata/wbgt_stations2023.csv"))
 }
 
-if (!file.exists(here::here("data/wbgt_observe2023.csv"))) {
+if (!file.exists(here::here("inst/extdata/wbgt_observe2023.csv"))) {
   if (!file.exists("data-raw/R05_wbgt_data_service_manual.pdf")) {
     download.file(
       "https://www.wbgt.env.go.jp/man15NH/R05_wbgt_data_service_manual.pdf",
@@ -204,12 +204,12 @@ if (!file.exists(here::here("data/wbgt_observe2023.csv"))) {
   df_wbgt_observe2023 <-
     make_wbgt_observe(here::here("data-raw/R05_wbgt_data_service_manual.pdf"))
   df_wbgt_observe2023 |>
-    readr::write_csv(here::here("data/wbgt_observe2023.csv"))
+    readr::write_csv(here::here("inst/extdata/wbgt_observe2023.csv"))
 }
 
 
 # R4 (2022) ---------------------------------------------------------------
-if (!file.exists(here::here("data/wbgt_stations2022.csv"))) {
+if (!file.exists(here::here("inst/extdata/wbgt_stations2022.csv"))) {
   if (!file.exists("data-raw/R04_wbgt_data_service_manual.pdf")) {
     download.file(
       "https://www.wbgt.env.go.jp/man15NH/R04_wbgt_data_service_manual.pdf",
@@ -248,9 +248,9 @@ if (!file.exists(here::here("data/wbgt_stations2022.csv"))) {
     ensurer::ensure(nrow(.) == 840L)
 
   df_wbgt_stations %>%
-    readr::write_csv(here::here("data/wbgt_stations2022.csv"))
+    readr::write_csv(here::here("inst/extdata/wbgt_stations2022.csv"))
 }
-if (!file.exists(here::here("data/wbgt_observe2022.csv"))) {
+if (!file.exists(here::here("inst/extdata/wbgt_observe2022.csv"))) {
   if (!file.exists("data-raw/R04_wbgt_data_service_manual.pdf")) {
     download.file(
       "https://www.wbgt.env.go.jp/man15NH/R04_wbgt_data_service_manual.pdf",
@@ -260,7 +260,7 @@ if (!file.exists(here::here("data/wbgt_observe2022.csv"))) {
   df_wbgt_observe2022 <-
     make_wbgt_observe(here::here("data-raw/R04_wbgt_data_service_manual.pdf"))
   df_wbgt_observe2022 |>
-    readr::write_csv(here::here("data/wbgt_observe2022.csv"))
+    readr::write_csv(here::here("inst/extdata/wbgt_observe2022.csv"))
 }
 
 # R3以前 --------------------------------------------------------------------
