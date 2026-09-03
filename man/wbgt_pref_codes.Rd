@@ -3,7 +3,7 @@
 \docType{data}
 \name{wbgt_pref_codes}
 \alias{wbgt_pref_codes}
-\title{JMA-region codes used by the Ministry of the Environment WebAPI}
+\title{Region and prefecture codes used by the Ministry of the Environment WebAPI}
 \format{
 A tibble with 60 rows and four columns:
 \describe{
@@ -14,17 +14,28 @@ A tibble with 60 rows and four columns:
 }
 }
 \source{
-Ministry of the Environment, Heat Illness Prevention Information
-Site WebAPI specification, version 1.1, section 2-1,
-\url{https://www.wbgt.env.go.jp/man15NH/wbgt_data_api_service_manual.pdf}
+Prefecture and subprefecture codes and names come from the Ministry
+of the Environment, Heat Illness Prevention Information Site WebAPI
+specification, version 1.1, section 2-1,
+\url{https://www.wbgt.env.go.jp/man15NH/wbgt_data_api_service_manual.pdf}.
+That section does not state which region each prefecture belongs to, so
+\code{area_cd} was taken from the \code{area_cd} field of \code{getSurveyData} responses.
 }
 \usage{
 wbgt_pref_codes
 }
 \description{
 A lookup table for the regional and prefecture/subprefecture codes accepted
-by \code{getForecastData} and \code{getSurveyData}. These are Japan Meteorological
-Agency region codes, not JIS prefecture codes. Hokkaido is divided into
-subprefectures and Okinawa uses the combined code 9194.
+by \code{getForecastData} and \code{getSurveyData}. The prefecture codes follow Japan
+Meteorological Agency numbering rather than JIS prefecture codes, so
+Hokkaido is divided into subprefectures and Okinawa uses the combined code
+9194. The grouping into regions is the WebAPI's own and does not always
+match the Agency's forecast regions.
+}
+\details{
+Yamaguchi (81) belongs to Chugoku (8), not Kyushu (10), even though its
+code falls in the 80s block that every Kyushu prefecture uses. The WebAPI
+departs from the Japan Meteorological Agency here, which places Yamaguchi
+in its northern Kyushu forecast region.
 }
 \keyword{datasets}
