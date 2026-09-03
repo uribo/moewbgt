@@ -35,13 +35,24 @@ updated: 2026-09-04
 
 **リポジトリ設定は解消済み（2026-09-04）**: `renv-update` が必要とする「Allow GitHub Actions to create and approve pull requests」をユーザーが有効化し、`can_approve_pull_request_reviews: true` を確認した。**同じ操作で `default_workflow_permissions` が `read` → `write` にも変わっている** — 現行 4 本はすべて `permissions:` を明示しているので実害は無いが、`read` に戻すかは未決（`TODO.md` #8）。
 
-**PR [#3](https://github.com/uribo/moewbgt/pull/3) を作成（2026-09-04）。初回 CI の結果**:
+**PR [#3](https://github.com/uribo/moewbgt/pull/3)、2026-09-04 に 8 ジョブすべて green。**`renv` ジョブは `renv.lock describes the project: 114 packages, all restored at the recorded version.` → `R CMD check` **Status: OK**（NOTE 0 件。`.vscode` の NOTE がローカル限定だという `TODO.md` #9 の判断もこれで裏づけられた）。
 
-- `R-CMD-check` 6 ジョブすべて pass（1m26s〜2m23s）。**R 4.1 が通ったことで `RENV_CONFIG_AUTOLOADER_ENABLED: FALSE` のガードが効いていることも実証された**（効いていなければ空のプロジェクトライブラリを向いて落ちる）。`air-format` も pass
-- **`renv` ジョブの restore は完全に成功した**（59.5 秒）。pak が GDAL/GEOS/PROJ/poppler 等を apt で解決し、sf・pdftools・s2・jmastats と GitHub の 2 件をすべて入れた。**懸念していた Linux 側の復元可能性はこれで実証済み。**`timeout-minutes: 45` は実測 1m40s に対して十分過ぎるが、キャッシュが効かない更新時の値なので当面下げない
-- **落ちたのは `renv::status()` の 1 点だけ**: `ensurer [ref: master != feb1defe…]`。`renv::install("user/repo")` はブランチ名を `RemoteRef` に書くが restore は SHA で入れるため、**手元では synchronized なのに CI だけが落ちる**。`renv::install("user/repo@<sha>")` で入れ直し、`ensurer` / `zipangu` とも `RemoteRef == RemoteSha` にした（動く ref を不変識別子へ固定する規約とも一致する）。**ブランチ名に戻さない。**
+**実証されたこと**:
 
-**残っている作業（次に行う 1 つ）**: 修正を push して `renv` ジョブの再実行を確認する。
+- **`RENV_CONFIG_AUTOLOADER_ENABLED: FALSE` のガードは効いている。** R 4.1 ジョブが通ったことがその証拠（効いていなければ空のプロジェクトライブラリを向いて落ちる）
+- **Linux での restore は成立する。** pak が GDAL/GEOS/PROJ/poppler 等を apt で解決し、sf・pdftools・s2・jmastats と GitHub の 2 件を含む 114 パッケージを 59.5 秒で入れた。`renv` ジョブ全体は 2m7s で、`timeout-minutes: 45` は十分過ぎるが、キャッシュの効かない更新時の値なので当面下げない
+
+**3 回連続で落ちた原因と、間違えた診断**:
+
+`renv::status()$synchronized` を関門にしていたが、**lockfile を書いた installer（手元の renv 自前）と CI が restore に使う installer（pak）は、GitHub 由来パッケージについて DESCRIPTION に書くフィールドが違う**。renv は `RemotePkgRef` も `NeedsCompilation` も書かず、pak は両方書く。**パッケージ名・版・commit SHA が完全に一致していても out of sync と報告される。**
+
+**1 回目の診断（`RemoteRef` がブランチ名だから）は誤りだった。**`ensurer` を `master` から SHA に固定しても落ち続け、報告が `[…@feb1defe: unchanged]` に変わっただけだった。原因が分かったのは、関門を**差分フィールドを名指しする**形に書き換えてから。「out of sync」としか言わない関門は、2 回分の空振りを生んだ。**失敗を報告する関門は、何が違うかを言えなければ関門の役を果たさない。**
+
+pak を外すのは代案にならない（sf / pdftools の sysreqs を解決しているのが pak で、apt のリストを手で持つと lockfile が変わるたびにずれる）。関門は実質を直接見る 3 検査に置き換えた: (1) コードスキャンが見つけたパッケージが全て lockfile にあるか、(2) lockfile の全てが restore されたか、(3) 版と（GitHub 由来なら）commit SHA が記録どおりか。**`renv::status()$synchronized` に戻さない。**
+
+SHA 固定自体（`ensurer` / `zipangu` とも `RemoteRef == RemoteSha`）は残す。今回の失敗の原因ではなかったが、「動く ref を不変識別子へ固定する」という規約に沿うため。**ブランチ名に戻さない。**
+
+**残っている作業（次に行う 1 つ）**: PR #3 をレビューしてマージする。マージ後は `default_workflow_permissions` を `read` に戻すかを決める（`TODO.md` #8）。
 
 **作業ツリーに残した他人の変更**: `.gitignore`（quarto の 3 行）と `data-raw/wbgt_pref_codes.R`（JMA の参照 URL 追記と `stringi::stri_trans_nfkc` による NFKC 正規化）は私の変更ではないので**コミットせずそのまま残してある**。どちらも lockfile を out-of-sync にはしない（`stringi` / `tidyselect` は既に記録済み）。
 
