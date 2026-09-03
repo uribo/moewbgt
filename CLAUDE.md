@@ -51,7 +51,9 @@ lockfile の範囲は DESCRIPTION より広い。コードスキャンが `data-
 
 **`renv::install()` が `s2` のソースビルドで落ちることがある**（`openssl/opensslv.h` が無い）。pak 経由の renv は `upgrade = TRUE` で依存を強制更新するため、バイナリの無い新版を掴むと起きる。`options(renv.config.pak.enabled = FALSE)` を付けて renv 自前のインストーラに落とせば、キャッシュから link して通る。
 
-**GitHub 由来のパッケージは `RemoteRef` を SHA で記録する。**`renv::install("user/repo")` はブランチ名（`master` / `HEAD`）を `RemoteRef` に書くが、restore は SHA でインストールするため**インストール後の `RemoteRef` が SHA になり、手元では synchronized なのに CI の `renv::status()` だけが落ちる**（2026-09-04、PR #3 の初回実行で `ensurer   [ref: master != feb1defe…]`）。`renv::install("user/repo@<sha>")` の形で入れ直せば `RemoteRef == RemoteSha` になり、動く ref を不変識別子に固定するという規約とも一致する。**ブランチ名に戻さない。**
+**GitHub 由来のパッケージは `RemoteRef` を SHA で記録する。**`renv::install("user/repo")` はブランチ名（`master` / `HEAD`）を書くので、`renv::install("user/repo@<sha>")` の形で入れる。動く ref を不変識別子に固定する規約どおりで、`RemoteRef == RemoteSha` になる。**ブランチ名に戻さない。**
+
+**`renv::status()$synchronized` を CI の関門にしない。**lockfile を書いた installer（renv 自前）と CI が restore に使う installer（pak）は、DESCRIPTION に書くフィールドが違う。GitHub 由来のパッケージについて renv は `RemotePkgRef` も `NeedsCompilation` も書かないが pak は両方書くため、**パッケージ名・版・commit SHA が完全に一致していても out of sync と報告される**（2026-09-04、PR #3 で 3 回連続で落ちた）。pak を外すのは代案にならない — sf / pdftools のための GDAL・poppler を apt で解決しているのが pak で、apt のリストを手で持つと lockfile が変わるたびにずれる。`.github/workflows/renv.yaml` の関門は代わりに実質を直接見る: (1) コードスキャンが見つけたパッケージが全て lockfile にあるか、(2) lockfile の全てが restore されたか、(3) 版と（GitHub 由来なら）commit SHA が記録どおりか。
 
 **pak のインストールはトランザクションで、1 つ落ちると全部巻き戻る。**成功表示を見た後でも `renv::status()` で確かめる（2026-09-04、`zipangu` のダウンロード失敗が同じ pass の `assertr` / `jmastats` ごと巻き戻した）。
 

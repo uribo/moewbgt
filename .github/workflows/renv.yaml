@@ -70,56 +70,87 @@ jobs:
           # apt-installed in the same pass; renv's own installer does not do it.
           RENV_CONFIG_PAK_ENABLED: TRUE
 
-      # A lockfile that restores is not yet a lockfile that describes the
-      # project: renv::status() is what catches a package added to DESCRIPTION,
-      # to data-raw/, or to _dependencies.R without a snapshot. Left unchecked
-      # that drift surfaces later as an unrelated-looking failure on someone
-      # else's machine.
+      # What this gate asserts, and why it is not renv::status().
       #
-      # The failure is reported field by field rather than by printing the
-      # status object. renv's own summary can say a package is out of sync and
-      # then render the difference as "unchanged" (seen on 2026-09-04 for the
-      # two GitHub packages), and printing the object dumps the entire lockfile
-      # -- several hundred lines in which the actual difference is invisible. A
-      # gate that cannot say what differs costs more than it saves.
+      # The thing worth catching is drift: a package added to DESCRIPTION, to
+      # data-raw/ or to _dependencies.R without a snapshot, which otherwise
+      # surfaces later as an unrelated-looking failure on someone else's
+      # machine. renv::status()$synchronized does catch that, but it also
+      # compares installer bookkeeping, and the installer that writes the
+      # lockfile here is not the one that restores it: renv's own installer
+      # records neither RemotePkgRef nor NeedsCompilation for a GitHub package,
+      # pak records both. On 2026-09-04 that made three consecutive runs fail
+      # with the lockfile and the library agreeing on every field anyone cares
+      # about -- same package, same version, same commit SHA.
+      #
+      # Dropping pak is not the alternative: it is what resolves and
+      # apt-installs GDAL/GEOS/PROJ and poppler for sf and pdftools, and a
+      # hand-maintained apt list would drift the moment the lockfile changes.
+      #
+      # So the gate asserts the substance directly. Each of the three checks
+      # below fails the run and names what it found.
       - name: Verify the lockfile still describes the project
         run: |
           Rscript - <<'RSCRIPT'
-          status <- renv::status()
-          if (isTRUE(status$synchronized)) {
-            cat("renv.lock and the restored library agree.\n")
-            quit(status = 0)
+          project <- read.dcf("DESCRIPTION")[1L, "Package"]
+          lib <- .libPaths()[1L]
+          lock <- renv::status()$lockfile$Packages
+          installed <- utils::installed.packages(lib.loc = lib)
+          problems <- character()
+
+          # 1. Every package the code scan finds is recorded. This is the drift
+          #    check: errors = "fatal" means a file the scanner cannot parse
+          #    stops the run rather than silently dropping its dependencies.
+          deps <- unique(renv::dependencies(errors = "fatal", progress = FALSE)$Package)
+          deps <- setdiff(deps, c(rownames(utils::installed.packages(priority = "base")), project))
+          uncovered <- setdiff(deps, names(lock))
+          if (length(uncovered)) {
+            problems <- c(problems, sprintf(
+              "used in the project but absent from renv.lock: %s",
+              paste(sort(uncovered), collapse = ", ")
+            ))
           }
 
-          lock <- status$lockfile$Packages
-          lib <- status$library$Packages
-          for (pkg in union(names(lock), names(lib))) {
-            a <- lock[[pkg]]
-            b <- lib[[pkg]]
-            if (is.null(a)) {
-              cat(sprintf("[%s] in library but not in renv.lock\n", pkg))
-              next
+          # 2. Every recorded package actually restored.
+          absent <- setdiff(names(lock), rownames(installed))
+          if (length(absent)) {
+            problems <- c(problems, sprintf(
+              "recorded in renv.lock but not installed: %s",
+              paste(sort(absent), collapse = ", ")
+            ))
+          }
+
+          # 3. What restored is what was recorded -- version for every package,
+          #    and the commit SHA for the two that come from GitHub, which is
+          #    the only thing pinning them means.
+          for (pkg in intersect(names(lock), rownames(installed))) {
+            want <- lock[[pkg]]$Version
+            got <- unname(installed[pkg, "Version"])
+            if (!identical(want, got)) {
+              problems <- c(problems, sprintf(
+                "%s: renv.lock records version %s, library has %s", pkg, want, got
+              ))
             }
-            if (is.null(b)) {
-              cat(sprintf("[%s] in renv.lock but not installed\n", pkg))
-              next
-            }
-            for (field in union(names(a), names(b))) {
-              x <- paste(as.character(a[[field]]), collapse = ", ")
-              y <- paste(as.character(b[[field]]), collapse = ", ")
-              if (!identical(x, y)) {
-                cat(sprintf(
-                  "[%s] %s: lockfile=%s library=%s\n",
-                  pkg, field, dQuote(x, FALSE), dQuote(y, FALSE)
+            if (identical(lock[[pkg]]$Source, "GitHub")) {
+              d <- read.dcf(file.path(lib, pkg, "DESCRIPTION"))
+              got <- if ("RemoteSha" %in% colnames(d)) unname(d[1L, "RemoteSha"]) else NA_character_
+              if (!identical(lock[[pkg]]$RemoteSha, got)) {
+                problems <- c(problems, sprintf(
+                  "%s: renv.lock records commit %s, library has %s",
+                  pkg, lock[[pkg]]$RemoteSha, got
                 ))
               }
             }
           }
 
-          stop(
-            "renv.lock is out of sync with the restored library. ",
-            "See the field-level differences above."
-          )
+          if (length(problems)) {
+            cat(paste0("- ", problems, collapse = "\n"), "\n", sep = "")
+            stop("renv.lock does not describe the restored library.")
+          }
+          cat(sprintf(
+            "renv.lock describes the project: %d packages, all restored at the recorded version.\n",
+            length(lock)
+          ))
           RSCRIPT
 
       # R CMD check under the pinned library, so "the lockfile restores" is
