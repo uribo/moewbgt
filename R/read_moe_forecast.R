@@ -15,9 +15,10 @@
 #'   `date_from` and `date_to`.
 #' @param fixed_time Optional issue time in `"HHMMSS"` format for range
 #'   searches.
-#' @param max_span Optional initial request width, as a positive number of
-#'   seconds or a `difftime`. The default sends the full range first and only
-#'   splits after a limit error.
+#' @param max_span Optional stride between requests, as a positive number of
+#'   seconds or a `difftime`. Consecutive requests share their boundary
+#'   instant, so a request spans one second more than the stride. The default
+#'   sends the full range first and only splits after a limit error.
 #' @return A tibble with `reference_time`, `wbgt_no`, `forecast_val`,
 #'   `forecast_time`, and `flag`. `forecast_val` is the upstream integer value
 #'   in degrees Celsius multiplied by 10 and is not converted by this

@@ -25,9 +25,10 @@ character values are accepted and interpreted in Japan Standard Time.}
 
 \item{data_type}{One or both of \code{0} (estimated) and \code{1} (measured).}
 
-\item{max_span}{Optional initial request width, as a positive number of
-seconds or a \code{difftime}. The default sends the full range first and only
-splits after a limit error.}
+\item{max_span}{Optional stride between requests, as a positive number of
+seconds or a \code{difftime}. Consecutive requests share their boundary
+instant, so a request spans one second more than the stride. The default
+sends the full range first and only splits after a limit error.}
 }
 \value{
 A tibble containing the upstream fields. \code{wbgt_WO}, \code{wbgt_Tw}, and

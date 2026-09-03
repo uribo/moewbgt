@@ -219,31 +219,33 @@ moe_api_parse_response_datetime <- function(x, field) {
   value
 }
 
+# Consecutive requests share their boundary instead of abutting, so
+# `max_span` is a stride rather than a width. The manual never says whether
+# `date_to` is inclusive, and only an overlap is correct under both
+# readings: a shared instant is fetched twice at worst, which the
+# `distinct()` in `moe_api_collect()` removes, whereas abutting ranges drop
+# the boundary record outright if the API excludes `date_to` -- and drop it
+# silently, so splitting would return fewer rows than the same unsplit
+# request.
 moe_api_intervals <- function(from, to, max_span) {
   if (is.null(max_span)) {
     return(list(list(from = from, to = to)))
   }
   intervals <- list()
   current <- from
-  while (current <= to) {
+  while (current < to) {
     interval_to <- min(current + max_span, to)
     intervals[[length(intervals) + 1L]] <- list(
       from = current,
       to = interval_to
     )
-    current <- interval_to + 1
+    current <- interval_to
   }
-  if (
-    length(intervals) > 1L &&
-      identical(
-        intervals[[length(intervals)]]$from,
-        intervals[[length(intervals)]]$to
-      )
-  ) {
-    intervals[[length(intervals) - 1L]]$to <- to
-    intervals[[length(intervals)]] <- NULL
+  if (length(intervals) == 0L) {
+    list(list(from = from, to = to))
+  } else {
+    intervals
   }
-  intervals
 }
 
 moe_api_collect_interval <- function(
@@ -275,13 +277,15 @@ moe_api_collect_interval <- function(
         )
       )
     }
+    # The halves share the midpoint for the same reason the strides overlap
+    # above: an unknown boundary rule must not be able to lose a record.
     midpoint <- from + floor(span / 2)
     parts <- list(
       moe_api_collect_interval(
         endpoint,
         query,
         from,
-        midpoint - 1,
+        midpoint,
         from_param,
         to_param,
         parser

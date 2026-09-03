@@ -108,8 +108,70 @@ test_that("threshold errors split the range and remove duplicate records", {
     nrow(dplyr::distinct(result, wbgt_no, wbgt_date, wbgt_class)),
     2L
   )
-  expect_true(any(grepl("date_to=20120601015959", requests, fixed = TRUE)))
+  # The halves meet at the midpoint rather than abutting it, so the instant
+  # itself is requested twice and cannot fall between them.
+  expect_true(any(grepl("date_to=20120601020000", requests, fixed = TRUE)))
   expect_true(any(grepl("date_from=20120601020000", requests, fixed = TRUE)))
+})
+
+test_that("splitting returns the same rows as one unsplit request", {
+  # The manual does not say whether `date_to` is inclusive. This server
+  # takes the stricter reading and excludes it, which is the reading that
+  # can lose a record at a boundary the client invented.
+  observations <- seq(
+    as.POSIXct("2012-06-01 00:00:00", tz = "Asia/Tokyo"),
+    by = "1 hour",
+    length.out = 5L
+  )
+  exclusive_server <- function(req) {
+    query <- httr2::url_parse(req$url)$query
+    parse_stamp <- function(x) {
+      as.POSIXct(x, format = "%Y%m%d%H%M%S", tz = "Asia/Tokyo")
+    }
+    matched <- observations[
+      observations >= parse_stamp(query$date_from) &
+        observations < parse_stamp(query$date_to)
+    ]
+    httr2::response_json(
+      200L,
+      body = list(
+        status = "success",
+        count = length(matched),
+        data = lapply(
+          matched,
+          function(stamp) {
+            list(
+              wbgt_no = 11001L,
+              wbgt_date = format(stamp, "%Y/%m/%d %H:%M:%S"),
+              wbgt_class = 0L,
+              area_cd = 1L,
+              pref_cd = 11L,
+              wbgt_WI = "1.0",
+              wbgt_WO = "9.9",
+              wbgt_Tw = "9.7",
+              wbgt_Tg = "10.0"
+            )
+          }
+        )
+      )
+    )
+  }
+  survey <- function(max_span) {
+    httr2::with_mocked_responses(
+      exclusive_server,
+      read_moe_survey(
+        station_no = 11001,
+        date_from = "2012-06-01 00:00:00",
+        date_to = "2012-06-01 04:00:00",
+        data_type = 0L,
+        max_span = max_span
+      )
+    )
+  }
+  unsplit <- survey(NULL)
+  expect_equal(nrow(unsplit), 4L)
+  expect_equal(survey(3600)$wbgt_date, unsplit$wbgt_date)
+  expect_equal(survey(5400)$wbgt_date, unsplit$wbgt_date)
 })
 
 test_that("threshold errors at one hour abort", {

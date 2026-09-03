@@ -11,9 +11,10 @@
 #' @param date_from,date_to Observation range. Date, POSIXct, and parseable
 #'   character values are accepted and interpreted in Japan Standard Time.
 #' @param data_type One or both of `0` (estimated) and `1` (measured).
-#' @param max_span Optional initial request width, as a positive number of
-#'   seconds or a `difftime`. The default sends the full range first and only
-#'   splits after a limit error.
+#' @param max_span Optional stride between requests, as a positive number of
+#'   seconds or a `difftime`. Consecutive requests share their boundary
+#'   instant, so a request spans one second more than the stride. The default
+#'   sends the full range first and only splits after a limit error.
 #' @return A tibble containing the upstream fields. `wbgt_WO`, `wbgt_Tw`, and
 #'   `wbgt_Tg` are degrees Celsius; `wbgt_WI` is the 0--4 data-quality code.
 #'   Values are converted from JSON strings to numeric but are otherwise
