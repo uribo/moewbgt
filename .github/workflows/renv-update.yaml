@@ -68,13 +68,13 @@ jobs:
     runs-on: ubuntu-latest
     # The default job timeout is 6 hours. r-lib/actions/setup-r@v2 stalled on
     # 2026-08-19 and held runners until that cap, which alone consumed 360
-    # runner-minutes per affected repository. Bounded at 90 rather than the 45
-    # of renv.yaml: this job restores sf and pdftools with their system
-    # requirements, always on a cold cache since the lockfile just changed, and
-    # since the CRAN pin in the update step it builds them from source instead
-    # of taking the PPM Linux binaries. Raise the number if it is hit; do not
-    # remove it.
-    timeout-minutes: 90
+    # runner-minutes per affected repository. Bounded at 45 to match renv.yaml:
+    # this job also restores sf and pdftools with their system requirements,
+    # and always on a cold cache since the lockfile just changed. The CRAN pin
+    # in the update step does not change this -- pak keeps installing P3M
+    # binaries -- so it does not buy source-build time. Raise the number if it
+    # is hit; do not remove it.
+    timeout-minutes: 45
 
     env:
       # ensurer and zipangu resolve from GitHub. Unauthenticated GitHub API
@@ -118,15 +118,22 @@ jobs:
         id: update
         run: |
           Rscript - <<'RSCRIPT'
-          # Pin CRAN itself, not the Posit Package Manager mirror the runner is
-          # configured with. renv::snapshot() copies the repository URL into the
-          # lockfile and takes each package's Repository field from what
-          # installed it, so restoring through PPM rewrites CRAN records as
-          # RSPM and points every later restore at a moving "latest" snapshot.
-          # That drift landed in PR #5 (2026-09-05) and was normalized by
-          # re-running renv::snapshot() under this pin, not by editing the
-          # lockfile. The cost of the pin is source builds on Linux, which is
-          # what the raised timeout on this job covers.
+          # Keep the repository URL the lockfile records pointing at CRAN
+          # rather than the moving "latest" Posit Package Manager snapshot the
+          # runner is configured with; PR #5 (2026-09-05) is how that drift got
+          # in. Both lines are needed: use-public-rspm sets
+          # RENV_CONFIG_REPOS_OVERRIDE, which renv honours ahead of
+          # options(repos), so pinning options alone leaves the PPM URL in the
+          # lockfile (measured in uribo/renv-update-smoke, run 33952584392).
+          #
+          # This fixes the recorded URL only. Each package's Repository field
+          # comes from wherever the runner installed it, and pak fetches P3M
+          # Linux binaries whatever options(repos) and use-public-rspm say, so
+          # packages this job updates will carry a P3M value. Those stamps are
+          # sticky: renv keeps the record of a package whose version did not
+          # change. Do not add a rewrite step to normalize them; restore does
+          # not depend on the field.
+          Sys.unsetenv("RENV_CONFIG_REPOS_OVERRIDE")
           options(repos = c(CRAN = "https://cloud.r-project.org"))
           renv::restore(prompt = FALSE)
           renv::update(prompt = FALSE, lock = TRUE)
