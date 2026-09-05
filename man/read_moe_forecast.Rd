@@ -25,7 +25,12 @@ read_moe_forecast(
 parseable character values are accepted and interpreted in Japan
 Standard Time. Supply both or neither. Both ends are inclusive:
 forecasts issued at \code{date_to} itself are returned (measured against the
-live API on 2026-09-04; the manual does not say).}
+live API on 2026-09-04; the manual does not say).
+\code{date_to} must be strictly later than \code{date_from}: the API accepts a
+degenerate range, but a date without a time becomes midnight, so an
+equal pair would silently return the single record at 00:00 rather
+than the day it reads as. For one instant, ask for a one-second
+range (\code{"2026-09-01 12:00:00"} to \code{"2026-09-01 12:00:01"}).}
 
 \item{origin_date}{One forecast issue time. Mutually exclusive with
 \code{date_from} and \code{date_to}.}

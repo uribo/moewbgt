@@ -13,6 +13,11 @@
 #'   Standard Time. Supply both or neither. Both ends are inclusive:
 #'   forecasts issued at `date_to` itself are returned (measured against the
 #'   live API on 2026-09-04; the manual does not say).
+#'   `date_to` must be strictly later than `date_from`: the API accepts a
+#'   degenerate range, but a date without a time becomes midnight, so an
+#'   equal pair would silently return the single record at 00:00 rather
+#'   than the day it reads as. For one instant, ask for a one-second
+#'   range (`"2026-09-01 12:00:00"` to `"2026-09-01 12:00:01"`).
 #' @param origin_date One forecast issue time. Mutually exclusive with
 #'   `date_from` and `date_to`.
 #' @param fixed_time Optional issue time in `"HHMMSS"` format for range

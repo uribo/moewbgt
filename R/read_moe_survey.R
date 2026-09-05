@@ -13,6 +13,11 @@
 #'   Both ends are inclusive: the record observed at `date_to` itself is
 #'   returned (measured against the live API on 2026-09-04; the manual does
 #'   not say).
+#'   `date_to` must be strictly later than `date_from`: the API accepts a
+#'   degenerate range, but a date without a time becomes midnight, so an
+#'   equal pair would silently return the single record at 00:00 rather
+#'   than the day it reads as. For one instant, ask for a one-second
+#'   range (`"2026-09-01 12:00:00"` to `"2026-09-01 12:00:01"`).
 #' @param data_type One or both of `0` (estimated) and `1` (measured).
 #' @param max_span Optional stride between requests, as a positive number of
 #'   seconds or a `difftime`. Consecutive requests share their boundary
