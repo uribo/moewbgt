@@ -6,21 +6,21 @@
 
 ## 現在の状態（最初に読む）
 
-**`R CMD check` は Status: OK**（0 errors / 0 warnings / 0 notes、2026-09-03 時点）。中身は [uribo/japan-heatstroke](https://github.com/uribo/japan-heatstroke) の `3b80b7a` からコピーした関数を出発点にしているが、以下は済んでいる: roxygen2 化と `man/` 生成、`NAMESPACE` の自動生成、`utils` の宣言。残る未整備:
+**`R CMD check` は Status: OK**（0 errors / 0 warnings / 0 notes、2026-09-05 時点）。中身は [uribo/japan-heatstroke](https://github.com/uribo/japan-heatstroke) の `3b80b7a` からコピーした関数を出発点にしているが、roxygen2 化と `man/` 生成、`NAMESPACE` の自動生成、WebAPI クライアント（`read_moe_forecast()` / `read_moe_survey()`）は済んでいる。残る未整備:
 
-- `tests/` は `wbgt_guideline()` の境界回帰テストだけ（testthat 3e、18 assertion）。ネットワークを叩く `read_moe_alert()` / `read_moe_wbgt()` は未カバーで、季節運用のためフィクスチャ（`httptest2` / `vcr`）が要る
-- CI は 4 本（`R-CMD-check` / `renv` / `renv-update` / `air-format`）。`tests/` の薄さはそのままなので、緑は「壊れていない」以上を意味しない
-- 2026 年度に追加された **WebAPI に未対応**（現行コードは CSV 直リンク前提）
+- `tests/` は **PASS 97**（testthat 3e）。WebAPI クライアントはモックした JSON で単体テストしてあるが、ネットワークを叩く `read_moe_alert()` / `read_moe_wbgt()` は未カバーで、季節運用のためフィクスチャ（`httptest2` / `vcr`）が要る
+- CI は 4 本（`R-CMD-check` / `renv` / `renv-update` / `air-format`）。旧 CSV サービス側が未カバーなので、緑は「壊れていない」以上を意味しない
+- WebAPI の `date_search_type = 2`（`fixed_time_dates`）は未対応（`TODO.md` #4 の残り）
 
-このパッケージの主目的は WebAPI クライアントの提供にある。API の制約（1 リクエスト 25,000 件上限、JMA 系 `pref_cd`、季節運用）は README.md の表と PROVENANCE.md に整理してある。**設計に着手する前にその 2 つを読む。**
+API の制約（1 リクエスト 25,000 件上限、JMA 系 `pref_cd`、季節運用）は README.md の表と PROVENANCE.md に整理してある。**設計に着手する前にその 2 つを読む。**
 
 引き継いだ既知の問題 7 件は [PROVENANCE.md](PROVENANCE.md) の「引き継いだ既知の問題」に番号付きで列挙してある。修正するときはその番号で参照し、内容をこちらに転記しない（二重管理を作らない）。
 
 ## SHA256SUMS の扱い（凍結バイト専用・失敗は常に異常）
 
-`SHA256SUMS` は `inst/extdata/` の 8 ファイルだけを記録する。**不一致は例外なく異常**として扱う。
+`SHA256SUMS` は `inst/extdata/` の 9 ファイルだけを記録する。**不一致は例外なく異常**として扱う。
 
-- 環境省の過去年度版マスタ CSV とマニュアル PDF が今も配布されているかは未確認で、配布されていなければ**再取得不能**
+- 環境省の過去年度版マスタ CSV とマニュアル PDF は**取得できない**（2026-09-05 確認。PDF は 403、日付入りマスタ CSV は 404）。現行の `wbgt_point_master-20260515.csv` も掲載日入りの 1 本しか無く、年度が替われば取り直せない
 - **不一致を記録値の書き換えで解消しない。ファイルを削除・上書きしない。** 不一致は「上流または手元が変わった」という事実の報告であり、何が変わったかを確認してユーザーに報告する
 
 ```sh
@@ -84,10 +84,12 @@ CI は `.github/workflows/` の 4 本。**`R-CMD-check` と `renv` は別のこ�
 - `R/guides.R` — WBGT 値 → 日常生活の指針（`wbgt_guideline()`）
 - `R/moewbgt-package.R` — パッケージレベルの roxygen（`"_PACKAGE"`）と `utils::globalVariables()`。**副作用を持たせない**
 - `man/` — roxygen2 の生成物。**直接編集しない**（`roxygenise()` で再生成する）
-- `data-raw/moe_wbgt_stations.R` — 提供サービスマニュアル PDF から地点マスタを抽出する導出スクリプト。出力先は `inst/extdata/`。各ブロックの `file.exists()` ガードにより、**既にあるファイルは再実行しても上書きされない**（凍結バイトの保護はこのガードに依存している。外さない）。2020 年版の生成経路は記録されていない（PROVENANCE「元データの出自」）
+- `data-raw/wbgt_stations.R` — 直接配布の地点マスタ CSV から `data/wbgt_stations.rda` を作る導出スクリプト。`file.exists()` ガードと sha256 照合（不一致で `stop()`）を持ち、行数・稼働中 841・実測 49／47・緯度経度の範囲・旧 841 地点の包含を全て fail-loud で守る。**ガードを外さない**
+- `data-raw/moe_wbgt_stations.R` — 提供サービスマニュアル PDF から地点マスタを抽出する旧導出スクリプト（上流 PDF は 403 で、手元に PDF がある場合の経路）。出力先は `inst/extdata/`。各ブロックの `file.exists()` ガードにより、**既にあるファイルは再実行しても上書きされない**（凍結バイトの保護はこのガードに依存している。外さない）。2020 年版の生成経路は記録されていない（PROVENANCE「元データの出自」）
 - `data-raw/survey_tokyo2020.R` — オリパラ暑熱環境測定事業の資料取得。導出パイプラインの一部ではない
+- `data/` — `usethis::use_data()` が書く `.rda`（`wbgt_stations`、`wbgt_pref_codes`）。**手で編集せず `data-raw/` のスクリプトで再生成する**（どちらも `overwrite = FALSE` なので、作り直すときは意図的に消す）
 - `renv.lock` — 開発環境の固定（`snapshot.type = "implicit"`）。**手で編集しない**（`renv::snapshot()` で再生成する）。`renv/settings.json` と `renv/activate.R` も追跡対象で、`renv/library/` 等は `renv/.gitignore` が除外する
-- `inst/extdata/` — 情報提供地点マスタ（`wbgt_stations*.csv`、840〜841 行）と都道府県ローマ字表（`wbgt_observe*.csv`、47 行）。**`wbgt_observe*` は実況値ではない**（名前と中身が食い違っている。PROVENANCE 問題 3）
+- `inst/extdata/` — 環境省が直接配布する地点マスタ（`wbgt_point_master-20260515.csv`、865 行 × 18 列。`data/wbgt_stations.rda` の導出元）と、PDF 由来の年度別マスタ（`wbgt_stations*.csv`、840〜841 行）・都道府県ローマ字表（`wbgt_observe*.csv`、47 行）。**`wbgt_observe*` は実況値ではない**（名前と中身が食い違っている。PROVENANCE 問題 3）。**新しいコードは `wbgt_stations` データセットを使う**（年度別 CSV は再取得不能なスナップショットとして残してあるだけ）
 
 ### URL 体系（旧 CSV サービス）
 
