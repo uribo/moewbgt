@@ -24,7 +24,12 @@ read_moe_survey(
 character values are accepted and interpreted in Japan Standard Time.
 Both ends are inclusive: the record observed at \code{date_to} itself is
 returned (measured against the live API on 2026-09-04; the manual does
-not say).}
+not say).
+\code{date_to} must be strictly later than \code{date_from}: the API accepts a
+degenerate range, but a date without a time becomes midnight, so an
+equal pair would silently return the single record at 00:00 rather
+than the day it reads as. For one instant, ask for a one-second
+range (\code{"2026-09-01 12:00:00"} to \code{"2026-09-01 12:00:01"}).}
 
 \item{data_type}{One or both of \code{0} (estimated) and \code{1} (measured).}
 
