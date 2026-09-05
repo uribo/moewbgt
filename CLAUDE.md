@@ -74,7 +74,7 @@ CI は `.github/workflows/` の 4 本。**`R-CMD-check` と `renv` は別のこ�
 
 - `R-CMD-check` — 6 ジョブ。依存は **DESCRIPTION から現行 CRAN に対して解決する**（CRAN 自身がやることであり、パッケージが利用者に対して負う契約）。うち `ubuntu-22.04` + R 4.1 が `Depends: R (>= 4.1.0)` の下限を検証する唯一の手段なので**外さない**。`renv/activate.R` は追跡されているため全ジョブが checkout し、リポジトリ直下で R が起動すると `.Rprofile` 経由で renv が有効化されて `.libPaths()` が空のプロジェクトライブラリに向く。これを止めているのが env の **`RENV_CONFIG_AUTOLOADER_ENABLED: FALSE`** で、**消すと 6 ジョブすべてが黙って renv 経路に移る**
 - `renv` — `renv.lock` が記録する R 版 1 つで restore し、`renv::status()` の同期を fail-loud で確かめてから `R CMD check` を回す（新しい checkout に座った人に対して repo が負う契約）。**`RENV_CONFIG_AUTOLOADER_ENABLED` を設定しない**のが正しい。CRAN から外れた `ensurer` / `zipangu` が今も解決できるかを試すのはこのジョブだけ
-- `renv-update` — 週 1 の lockfile 更新 PR。**リポジトリ設定「Allow GitHub Actions to create and approve pull requests」に依存する**（2026-09-04 に有効化済み）。無効に戻すと `gh pr create` が落ちるが、エラーは設定名を言わないので週 1 で赤くなるだけの症状になる
+- `renv-update` — 週 1 の lockfile 更新 PR。**`options(repos)` を `https://cloud.r-project.org` に固定してある**。ランナーは Posit Package Manager を向いており、そのまま restore すると lockfile の `Repository` が `CRAN` → `RSPM` に書き換わり、リポジトリ URL も動く `latest` を指すようになる（2026-09-05、PR #5 でこれが混入した）。**PPM に戻さない**。代償は Linux でのソースビルドで、`timeout-minutes: 90` はそれを見込んだ数字。**リポジトリ設定「Allow GitHub Actions to create and approve pull requests」に依存する**（2026-09-04 に有効化済み）。無効に戻すと `gh pr create` が落ちるが、エラーは設定名を言わないので週 1 で赤くなるだけの症状になる
 - `air-format` — `air format . --check`。`R tests` に狭めると `data-raw/` のドリフトを見逃す
 
 ## 構成
