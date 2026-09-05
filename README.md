@@ -70,20 +70,43 @@ wbgt_guideline(31)
 
 ## 同梱データ
 
-情報提供地点のマスタと、旧 CSV サービスの URL 組み立てに使う都道府県ローマ字表を `inst/extdata/` に同梱しています。**japan-heatstroke では `data/` にありましたが、R パッケージの `data/` は `.rda` を置く場所なので移しました。**読み込みパスが変わります。
+地点マスタと地方・都道府県コードの対応表はデータセットとして同梱しています。`library(moewbgt)` のあと名前で参照できます。
 
 ```r
-# 旧（japan-heatstroke）
-# readr::read_csv("data/wbgt_stations2024.csv", col_types = "cccc")
+# 情報提供地点のマスタ（865 地点 = 稼働中 841 + 提供終了 24）
+wbgt_stations
 
-# 新（moewbgt）
+# 稼働中の実測地点だけを取る
+dplyr::filter(wbgt_stations, !is.na(measure_start_date), is.na(measure_end_date))
+
+# WebAPI の返り値に地点名・緯度経度を付ける（返り値も area_cd / pref_cd を持つので必要な列だけ結合する）
+read_moe_survey(station_no = 44132, date_from = "2026-09-01", date_to = "2026-09-02") |>
+  dplyr::left_join(
+    dplyr::select(wbgt_stations, station_no, station_name, latitude, longitude),
+    by = dplyr::join_by(wbgt_no == station_no)
+  )
+
+# WebAPI の地方コード・都道府県コード（JMA 系。JIS コードではありません）
+wbgt_pref_codes
+```
+
+| データセット | 中身 | 行数 |
+|---|---|---|
+| `wbgt_stations` | 情報提供地点のマスタ。`station_no` は WebAPI の `wbgt_no` と同じ整数（旧 CSV サービスの返り値は文字列なので結合時に揃える）、`area_cd` / `pref_cd` は WebAPI が受け付けるコード。緯度経度は 10 進度、提供終了日などの `9999-99-99`（継続中）は `NA` | 865 |
+| `wbgt_pref_codes` | 地方コード・都府県／振興局コードの対応表 | 60 |
+
+`wbgt_stations` の導出元は環境省が直接配布する[地点マスタ CSV](https://www.wbgt.env.go.jp/man15NH/wbgt_point_master-20260515.csv) で、そのバイトは `inst/extdata/wbgt_point_master-20260515.csv` に凍結してあります（上流は掲載日入りの 1 本だけで、前年度版は既に取得できません）。
+
+### 旧バージョンの参照テーブル（`inst/extdata/`）
+
+提供サービスマニュアル PDF から抽出した年度別のマスタも残してあります。上流の PDF は現在 403 で取り直せないため、年度スナップショットとして保存しているものです。**新しく書くコードは `wbgt_stations` を使ってください。**
+
+```r
 readr::read_csv(
   system.file("extdata", "wbgt_stations2024.csv", package = "moewbgt"),
   col_types = "cccc"
 )
 ```
-
-いずれも観測値ではなく参照テーブルです。**ファイル名と中身は 1 か所ずれています**:
 
 | ファイル | 中身 | 行数 |
 |---|---|---|
