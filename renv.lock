@@ -1070,10 +1070,12 @@
       "URL": "https://github.com/smbache/ensurer",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
-      "RemoteUsername": "smbache",
       "RemoteRepo": "ensurer",
+      "RemoteUsername": "smbache",
+      "RemotePkgRef": "smbache/ensurer@feb1defe557cca6b5366f029cbbf3da757d7fe0d",
       "RemoteRef": "feb1defe557cca6b5366f029cbbf3da757d7fe0d",
-      "RemoteSha": "feb1defe557cca6b5366f029cbbf3da757d7fe0d"
+      "RemoteSha": "feb1defe557cca6b5366f029cbbf3da757d7fe0d",
+      "NeedsCompilation": "no"
     },
     "evaluate": {
       "Package": "evaluate",
@@ -4307,14 +4309,16 @@
       "LazyData": "true",
       "Roxygen": "list(markdown = TRUE)",
       "RoxygenNote": "7.3.3",
-      "Author": "Shinya Uryu [aut, cre] (ORCID: <https://orcid.org/0000-0002-0493-6186>), Hiroaki Yutani [ctb] (ORCID: <https://orcid.org/0000-0002-3385-7233>), Kazuhiro Maeda [ctb], Mao Kobayashi [ctb], Akiru Kato [ctb]",
-      "Maintainer": "Shinya Uryu <suika1127@gmail.com>",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
-      "RemoteUsername": "uribo",
       "RemoteRepo": "zipangu",
+      "RemoteUsername": "uribo",
+      "RemotePkgRef": "uribo/zipangu@c5c58dd7dde3c6dc9271ace47da0469febdb5d1c",
       "RemoteRef": "c5c58dd7dde3c6dc9271ace47da0469febdb5d1c",
-      "RemoteSha": "c5c58dd7dde3c6dc9271ace47da0469febdb5d1c"
+      "RemoteSha": "c5c58dd7dde3c6dc9271ace47da0469febdb5d1c",
+      "NeedsCompilation": "no",
+      "Author": "Shinya Uryu [aut, cre] (ORCID: <https://orcid.org/0000-0002-0493-6186>), Hiroaki Yutani [ctb] (ORCID: <https://orcid.org/0000-0002-3385-7233>), Kazuhiro Maeda [ctb], Mao Kobayashi [ctb], Akiru Kato [ctb]",
+      "Maintainer": "Shinya Uryu <suika1127@gmail.com>"
     }
   }
 }
