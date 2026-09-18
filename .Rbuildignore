@@ -18,3 +18,5 @@
 ^TODO\.md$
 ^\.agents$
 ^memory$
+^tools$
+^\.githooks$
