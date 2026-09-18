@@ -11,6 +11,8 @@ updated: 2026-09-05
 
 > 別のエージェント（Codex 等）や次のセッションが**この欄だけ読めば再開できる**状態を保つ。残すのは今使っている判断だけで、検討しただけの案は書かない。方針を決めた時・試行を捨てた時・検証を実行した時・セッションを終える時に更新する。
 
+**指示ファイル（2026-09-18）**: 規約の正典は `AGENTS.md`（`CLAUDE.md` は `@AGENTS.md` と Claude Code 固有の設定だけ）。旧 `AGENTS.md` にあった Codex 向けの規則は本文に統合済み。`AGENTS.md` は 32 KiB を超えないこと（`tools/check-instructions-size.sh` と hook が検査）。経緯は uribo/research-project-template#12
+
 - **現在採用している方針（エージェント環境）**: jpops / kumagusu ではなく research-project-template 寄りの構成（`CLAUDE.md` + `AGENTS.md` + `.claude/settings.json` + `.codex/config.toml` + `memory/` + `TODO.md`）。skill の symlink は conf-macos の `deploy/manifest.tsv` で scope=both を宣言し、`.claude/skills/` と `.agents/skills/` の両方へ配備する。`.claude/settings.json` には renv 関連 hook（PreToolUse の `renv.lock` ゲート、Stop の drift チェック）を 2026-09-04 に戻してある。
 
 - **現在採用している方針（パッケージ）**: WebAPI クライアント（`read_moe_forecast()` / `read_moe_survey()`）は 2026-09-03 に実装・マージ完了。対応表 `data/wbgt_pref_codes.rda` は 2026-09-04 に山口（`pref_cd = 81`）の `area_cd` を 10（九州）→ **8（中国）** へ修正した。**`area_cd` は仕様書から読み取れない** — 第1.1版 2-1節は地方名の行と都府県の並びを別々に置くだけで対応を書いておらず、並びは都道府県コードの単純な昇順で地方の切れ目を含まない。初版は並び順と気象庁の区分から推論していたが、どちらの手がかりも誤った方向を指していた。`getSurveyData` のレスポンスが `area_cd` と `pref_cd` を両方返すことを使い、`location_type=2` で全 60 件を照会して確定させた。気象庁は山口を「九州北部地方（山口県を含む）」に入れるが、環境省 WebAPI はこの 1 点で気象庁に従っていない。**修正は 7 ファイル**（`data-raw/wbgt_pref_codes.R` / `data/wbgt_pref_codes.rda` / `tests/testthat/test-data.R` / `R/data.R` / `man/wbgt_pref_codes.Rd` / `PROVENANCE.md` / `TODO.md`）。3 コミット `5951687` / `db14c90` / `a967dde` は push 済み。 **WebAPI の `date_to` は両端包含と実測で確定（2026-09-04、`356aebd`）したが、境界を 1 点重ねる設計（`R/moe_api.R` の `moe_api_intervals()` と二分の midpoint）は変えない** — 実測であって仕様書の保証ではないため。判明した意味は `@param date_to` と `README.md` に書いてある。
