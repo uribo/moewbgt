@@ -21,10 +21,10 @@ updated: 2026-09-03
 - 導出スクリプト: `data-raw/`（`.Rbuildignore` 対象）
 - 同梱参照テーブル: `inst/extdata/`（地点マスタ・都道府県ローマ字表）
 - 出所と引き継いだ課題: `PROVENANCE.md`、未決着の判断: `TODO.md`
-- 規約と設計上の注意: `CLAUDE.md`
+- 規約と設計上の注意: `AGENTS.md`（2026-09-18 に `CLAUDE.md` から移した正典）
 
 ## 現在地
 
 [uribo/japan-heatstroke](https://github.com/uribo/japan-heatstroke) からのコピー直後。`man/` と `tests/` が無く `R CMD check` は通らない。WebAPI 未対応。
 
-**How to apply:** 新しいタスクに着手する前にこのファイルで全体像を確認する。詳細な規約は `CLAUDE.md` を参照。
+**How to apply:** 新しいタスクに着手する前にこのファイルで全体像を確認する。詳細な規約は `AGENTS.md` を参照。

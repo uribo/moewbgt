@@ -10,7 +10,7 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 
 補強材料: `SHA256SUMS` は `.Rbuildignore` されているため、仮に kumagusu の `inst/provenance/` 方式で同梱してもコード行は検証できない（インストール後に `R/*.R` は lazyload DB になり、`data-raw/` は build 対象外）。コード行はソースツリー以外のどの文脈でも検証不能だった。
 
-**戻さないこと**: `SHA256SUMS` にコード行を再追加しない（`CLAUDE.md` / `AGENTS.md` にも明記）。
+**戻さないこと**: `SHA256SUMS` にコード行を再追加しない（`AGENTS.md` にも明記）。
 
 ## 2. roxygen2 化と `man/` 生成
 
@@ -64,8 +64,8 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 
 **残り 4 件の扱い**（うち 4 はその後 2026-09-03 に解消した）:
 
-- **3**（`wbgt_observe*.csv` の改名）— **判断済み: 改名しない（現状維持、2026-09-03、ユーザー判断）**。公開リポジトリの破壊的変更にあたること、japan-heatstroke 側でも同じ理由で保留されていること（同 repo `TODO.md` 項目 1）、そして API 移行でファイルごと不要になる可能性が高いことから、改名のコストを払う前に前提が変わりうる。**名前と中身の食い違いという事実自体は残る**ので、`README.md`・`PROVENANCE.md`・`CLAUDE.md` の 3 か所で明示する現状の記述を薄めない。再検討するとすれば #4（WebAPI クライアント）で、このファイルが不要と確定したときに削除の可否として扱う
-- **4**（単位の規約）— **解消（2026-09-03）**。生きた API に照会し、`getSurveyData` は摂氏の小数、`getForecastData` の `forecast_val` は摂氏 ×10 の整数であることを確定した。裏づけと再現手順は `PROVENANCE.md` の問題 4、換算の規約は `CLAUDE.md`「単位の規約」
+- **3**（`wbgt_observe*.csv` の改名）— **判断済み: 改名しない（現状維持、2026-09-03、ユーザー判断）**。公開リポジトリの破壊的変更にあたること、japan-heatstroke 側でも同じ理由で保留されていること（同 repo `TODO.md` 項目 1）、そして API 移行でファイルごと不要になる可能性が高いことから、改名のコストを払う前に前提が変わりうる。**名前と中身の食い違いという事実自体は残る**ので、`README.md`・`PROVENANCE.md`・`AGENTS.md` の 3 か所で明示する現状の記述を薄めない。再検討するとすれば #4（WebAPI クライアント）で、このファイルが不要と確定したときに削除の可否として扱う
+- **4**（単位の規約）— **解消（2026-09-03）**。生きた API に照会し、`getSurveyData` は摂氏の小数、`getForecastData` の `forecast_val` は摂氏 ×10 の整数であることを確定した。裏づけと再現手順は `PROVENANCE.md` の問題 4、換算の規約は `AGENTS.md`「単位の規約」
 - **5**（パス体系が 2026 年度も同一か）— 外部アクセスを伴う。#6 と併せて確認する
 - **6**（`man/` が無い）— #2 と同一の項目。**そちらで解消済み（2026-09-03）**
 
@@ -94,7 +94,7 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 
 ## 8. renv
 
-**扱い: 完了（2026-09-04）** — `renv.lock`（114 パッケージ、`snapshot.type = "implicit"`）と `.Rprofile`・`_dependencies.R` を追加し、CI に `renv` / `renv-update` の 2 本を足した。方針の分担は `CLAUDE.md`「開発コマンド」の CI 節にある。
+**扱い: 完了（2026-09-04）** — `renv.lock`（114 パッケージ、`snapshot.type = "implicit"`）と `.Rprofile`・`_dependencies.R` を追加し、CI に `renv` / `renv-update` の 2 本を足した。方針の分担は `AGENTS.md`「開発コマンド」の CI 節にある。
 
 - **`R-CMD-check` の 6 ジョブは DESCRIPTION 解決のまま**（ユーザー判断）。lockfile へ寄せると `Depends: R (>= 4.1.0)` の下限を検証する唯一の手段（R 4.1 ジョブ）が壊れ、devel / oldrel の意味も失われる。`renv/activate.R` が追跡されている以上 `.Rprofile` は全ジョブで読まれるので、env の `RENV_CONFIG_AUTOLOADER_ENABLED: FALSE` が実際の分離を担っている。**消すと 6 ジョブすべてが黙って renv 経路に移る**
 - **lockfile は `data-raw/` を含む**（ユーザー判断）。導出スクリプトは CRAN から外れた `ensurer` と `zipangu` に依存しており、その出所（GitHub の commit SHA）を書いている場所は repo 内で `renv.lock` だけ
@@ -109,7 +109,7 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 
 ## 9. `.vscode` によるローカル限定の R CMD check NOTE
 
-手元で `R CMD build .` → `R CMD check` を回すと `checking for hidden files and directories ... NOTE`（`Found the following hidden files and directories: .vscode`）が出る。**CI では出ない。**`.vscode` はユーザーのグローバル gitignore（`~/.config/git/ignore`）で除外されていて git に入らず、clean checkout からビルドする CI の tarball には現れないため。`CLAUDE.md` の「Status: OK（0/0/0）」は CI と同じ条件を指しており、その主張は今も有効。
+手元で `R CMD build .` → `R CMD check` を回すと `checking for hidden files and directories ... NOTE`（`Found the following hidden files and directories: .vscode`）が出る。**CI では出ない。**`.vscode` はユーザーのグローバル gitignore（`~/.config/git/ignore`）で除外されていて git に入らず、clean checkout からビルドする CI の tarball には現れないため。`AGENTS.md` の「Status: OK（0/0/0）」は CI と同じ条件を指しており、その主張は今も有効。
 
 **renv 導入による退行ではない**（2026-09-04 確認。根拠は `git ls-tree main` に `.vscode` が無いことと、`git check-ignore -v .vscode` が `~/.config/git/ignore` を指すこと。変更前のツリーを実際にビルドして比べたわけではない）。手元の NOTE を消したければ `.Rbuildignore` に `^\.vscode$` を 1 行足すだけだが、リポジトリの側の不具合ではない。
 
@@ -145,7 +145,7 @@ GitHub Issue はまだ使っていないので、未決着の判断と次に行�
 
 ## 13. `mntr/dl/` の実測地点は本当に 11 地点か
 
-配布マスタは `実測開始日` が埋まる地点を **49 件**（稼働中 47）持ち、大半が 2025-04-01 開始になっている。一方 `CLAUDE.md` の URL 体系の表と `data-raw/moe_wbgt_stations.R` の冒頭コメントは `mntr/dl/`（実測地点別）を「11 地点」と書く（札幌・仙台・新潟・東京・名古屋・大阪・広島・高知・福岡・鹿児島・那覇）。
+配布マスタは `実測開始日` が埋まる地点を **49 件**（稼働中 47）持ち、大半が 2025-04-01 開始になっている。一方 `AGENTS.md` の URL 体系の表と `data-raw/moe_wbgt_stations.R` の冒頭コメントは `mntr/dl/`（実測地点別）を「11 地点」と書く（札幌・仙台・新潟・東京・名古屋・大阪・広島・高知・福岡・鹿児島・那覇）。
 
 配布物の主張であって、`mntr/dl/` が実際に 47 地点分の CSV を返すかは確認していない。**確認するまで「11」を書き換えない。** 確認は `read_moe_wbgt(type = "observe", station = <ローマ字名>, year_month = ...)` を配布マスタの `romaji`（例 `AOMORI` → `Aomori`）で数本叩けばよい。`romaji` は全て大文字なので、URL に使う先頭大文字の綴りへの変換規則もあわせて確かめる。
 

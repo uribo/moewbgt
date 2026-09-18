@@ -1,21 +1,155 @@
-# Codex project instructions
+# moewbgt
 
-Read and follow `CLAUDE.md` as the primary source of project knowledge and conventions. The rules below add Codex-specific constraints.
+環境省 熱中症予防情報サイト（<https://www.wbgt.env.go.jp/>）の暑さ指数（WBGT）と熱中症警戒アラートを扱う R パッケージ。配布元 GitHub: `uribo/moewbgt`。CRAN 未登録。
 
-## Credential handling
+このファイルは全エージェント共通の正典で、Codex は直接、Claude Code は `CLAUDE.md` 1 行目の `@AGENTS.md` 経由で読む（`CLAUDE.md` は Claude Code 専用で Codex に届かない）。**このファイルは 32 KiB（32,768 バイト）を超えてはならない**（Codex が警告なく打ち切る。検査は `sh tools/check-instructions-size.sh` と git / Claude Code の hook）。`@` 記法で分割しない。経緯・出所・引き継いだ課題の詳細は [PROVENANCE.md](PROVENANCE.md) にあり、ここでは重複させずに参照する。
 
-- Never read, edit, print, search, summarize, or otherwise expose the project environment file, `.env`, credential JSON files, private keys, or files whose purpose is to store secrets.
-- Do not bypass `.codex/config.toml` environment filtering or override `R_ENVIRON_USER` unless the user explicitly approves access for a specific task.
-- If a task needs authenticated API access, explain which environment variable is required and obtain approval before enabling it. Never include credential values in prompts, logs, command output, or commits.
+## 現在の状態（最初に読む）
 
-## Provenance
+**`R CMD check` は Status: OK**（0 errors / 0 warnings / 0 notes、2026-09-05 時点）。中身は [uribo/japan-heatstroke](https://github.com/uribo/japan-heatstroke) の `3b80b7a` からコピーした関数を出発点にしているが、roxygen2 化と `man/` 生成、`NAMESPACE` の自動生成、WebAPI クライアント（`read_moe_forecast()` / `read_moe_survey()`）は済んでいる。残る未整備:
 
-- `SHA256SUMS` covers the nine `inst/extdata/` files and nothing else. They are frozen bytes that may not be re-obtainable upstream, so a mismatch is always a defect. Never resolve one by rewriting the recorded digest, and never delete or overwrite those files. Report the mismatch instead.
-- Do not add `R/` or `data-raw/` entries back to `SHA256SUMS`. Their copy-time digests are history, kept in `PROVENANCE.md`; putting them back makes the gate fire on intended edits. See the "SHA256SUMS の扱い" section of `CLAUDE.md`.
-- Keep data retrieval fail-loud. Do not wrap it in `purrr::safely()` or `tryCatch()`.
+- `tests/` は **PASS 97**（testthat 3e）。WebAPI クライアントはモックした JSON で単体テストしてあるが、ネットワークを叩く `read_moe_alert()` / `read_moe_wbgt()` は未カバーで、季節運用のためフィクスチャ（`httptest2` / `vcr`）が要る
+- CI は 4 本（`R-CMD-check` / `renv` / `renv-update` / `air-format`）。旧 CSV サービス側が未カバーなので、緑は「壊れていない」以上を意味しない
+- WebAPI の `date_search_type = 2`（`fixed_time_dates`）は未対応（`TODO.md` #4 の残り）
 
-## Handoff from Claude Code
+API の制約（1 リクエスト 25,000 件上限、JMA 系 `pref_cd`、季節運用）は README.md の表と PROVENANCE.md に整理してある。**設計に着手する前にその 2 つを読む。**
 
-- Before starting, read the "引き継ぎ（HANDOFF）" block at the top of `memory/project-status.md`, then check `git status` and `git diff`. Do not discard existing changes.
-- Treat recorded decisions as claims: confirm them against the code and test results before building on them.
-- When you finish or stop, update the HANDOFF block (current approach, the single next task, failed attempts, unverified items, last verification command and result).
+引き継いだ既知の問題 7 件は [PROVENANCE.md](PROVENANCE.md) の「引き継いだ既知の問題」に番号付きで列挙してある。修正するときはその番号で参照し、内容をこちらに転記しない（二重管理を作らない）。
+
+## SHA256SUMS の扱い（凍結バイト専用・失敗は常に異常）
+
+`SHA256SUMS` は `inst/extdata/` の 9 ファイルだけを記録する。**不一致は例外なく異常**として扱う。
+
+- 環境省の過去年度版マスタ CSV とマニュアル PDF は**取得できない**（2026-09-05 確認。PDF は 403、日付入りマスタ CSV は 404）。現行の `wbgt_point_master-20260515.csv` も掲載日入りの 1 本しか無く、年度が替われば取り直せない
+- **不一致を記録値の書き換えで解消しない。ファイルを削除・上書きしない。** 不一致は「上流または手元が変わった」という事実の報告であり、何が変わったかを確認してユーザーに報告する
+
+```sh
+shasum -a 256 -c SHA256SUMS
+```
+
+**導出元 PDF の凍結コピーは別の関門で見る。** `inst/extdata/` の 2022〜2024 年版を生んだ提供サービスマニュアル（`R04`〜`R06`）は上流が 403 になり取り直せない。バイトは repo に入れず canonical（`4_Archives/_frozen/moewbgt/manuals/`）と offsite（OneDrive）へ二重化してあり、照合は `data-raw/verify_frozen_manuals.sh` が行う（`SHA256SUMS` は repo 内のファイルしか見られないので混ぜない）。四半期ごと＋原稿の節目に走らせ、結果を `PROVENANCE.md` の照合ログへ追記する。詳細は `TODO.md` #12。
+
+コピー時点のコード 5 ファイルのダイジェストは、かつて同じファイルに同居していたが `PROVENANCE.md` の履歴表へ移した（2026-09-03、TODO #1 決着）。**「コピー時に上流と一致した」は一度きりの主張**で、検証済みかつ初期コミット `7efd1b3` に凍結されている。以後コードを直せば当然一致しなくなるので、継続的な関門に混ぜない。同じ主張は git で自己検証できる:
+
+```sh
+git show 7efd1b3:R/guides.R | shasum -a 256
+```
+
+**`SHA256SUMS` にコード行を戻さない。** 関門が意図した変更に対して発砲するようになり、fail-loud の看板に例外規定を抱えさせることになる。
+
+## 開発コマンド
+
+```sh
+Rscript -e 'renv::restore()'          # 固定された開発環境を復元
+Rscript -e 'roxygen2::roxygenise()'   # man/ と NAMESPACE を再生成
+air format .
+```
+
+**依存は renv で固定してある**（`renv.lock`、`snapshot.type = "implicit"`）。`.Rprofile` が `renv/activate.R` を source するので、このディレクトリで R を起動すれば自動でプロジェクトライブラリに切り替わる。ライブラリの実体は repo の中ではなく `~/Library/Caches/org.R-project.R/R/renv/library/moewbgt-*/` にある（renv 1.2 の既定）。
+
+**`renv.lock` の R 4.6.1 は開発環境の固定であって `Depends: R (>= 4.1.0)` の下限ではない。**両者は別のことを主張している。下限を検証するのは `R-CMD-check` の `ubuntu-22.04` + R 4.1 ジョブだけで、そちらは lockfile を使わない（下記 CI 参照）。
+
+lockfile の範囲は DESCRIPTION より広い。コードスキャンが `data-raw/` と `tests/` と `_dependencies.R` を読むので、**`inst/extdata/` を生む導出スクリプトの環境も固定されている**。そこには **CRAN から外れた 2 パッケージ**が含まれる: `ensurer`（`data-raw/moe_wbgt_stations.R` の検証）と `zipangu`（`harmonize_prefecture_name()` / `jpnprefs`）。どちらも GitHub の commit SHA で記録してあり、**`renv.lock` が repo 内で唯一その出所を書いている場所**。消すと導出経路が再現不能になる。
+
+**`renv::install()` が `s2` のソースビルドで落ちることがある**（`openssl/opensslv.h` が無い）。pak 経由の renv は `upgrade = TRUE` で依存を強制更新するため、バイナリの無い新版を掴むと起きる。`options(renv.config.pak.enabled = FALSE)` を付けて renv 自前のインストーラに落とせば、キャッシュから link して通る。
+
+**GitHub 由来のパッケージは `RemoteRef` を SHA で記録する。**`renv::install("user/repo")` はブランチ名（`master` / `HEAD`）を書くので、`renv::install("user/repo@<sha>")` の形で入れる。動く ref を不変識別子に固定する規約どおりで、`RemoteRef == RemoteSha` になる。**ブランチ名に戻さない。**
+
+**`renv::status()$synchronized` を CI の関門にしない。**lockfile を書いた installer（renv 自前）と CI が restore に使う installer（pak）は、DESCRIPTION に書くフィールドが違う。GitHub 由来のパッケージについて renv は `RemotePkgRef` も `NeedsCompilation` も書かないが pak は両方書くため、**パッケージ名・版・commit SHA が完全に一致していても out of sync と報告される**（2026-09-04、PR #3 で 3 回連続で落ちた）。pak を外すのは代案にならない — sf / pdftools のための GDAL・poppler を apt で解決しているのが pak で、apt のリストを手で持つと lockfile が変わるたびにずれる。`.github/workflows/renv.yaml` の関門は代わりに実質を直接見る: (1) コードスキャンが見つけたパッケージが全て lockfile にあるか、(2) lockfile の全てが restore されたか、(3) 版と（GitHub 由来なら）commit SHA が記録どおりか。
+
+**pak のインストールはトランザクションで、1 つ落ちると全部巻き戻る。**成功表示を見た後でも `renv::status()` で確かめる（2026-09-04、`zipangu` のダウンロード失敗が同じ pass の `assertr` / `jmastats` ごと巻き戻した）。
+
+**`roxygenise()` は、パッケージがライブラリに入っていないと `[fn()]` 形式のリンクを解決できず**「Could not resolve link to topic」を出す。先に `R CMD INSTALL` してから `R_LIBS=<lib>` 付きで走らせれば消える（実体は未インストールが原因で、記述の誤りではない）。
+
+**devtools はこの端末に入っていない。** テストは実際にインストールしてから流す。`.onLoad()` は `source()` や `load_all()` では発火しないので、memoise の確認にはインストールが要る:
+
+```sh
+R CMD INSTALL --library=/tmp/lib .
+Rscript -e 'library(moewbgt, lib.loc = "/tmp/lib"); testthat::test_dir("tests/testthat", package = "moewbgt", stop_on_failure = TRUE)'
+```
+
+**R ファイル（`.R` / `.qmd`）を編集したら `air format .` を実行する。** `.claude/settings.json` の PostToolUse hook は Edit / Write ツール経由の編集にしか発火しないので、`sed` やヒアドキュメントで書き換えたときは手で走らせる。設定は `air.toml`（line-width 80）。
+
+CI は `.github/workflows/` の 4 本。**`R-CMD-check` と `renv` は別のことを検証しており、片方をもう片方に寄せない。**
+
+- `R-CMD-check` — 6 ジョブ。依存は **DESCRIPTION から現行 CRAN に対して解決する**（CRAN 自身がやることであり、パッケージが利用者に対して負う契約）。うち `ubuntu-22.04` + R 4.1 が `Depends: R (>= 4.1.0)` の下限を検証する唯一の手段なので**外さない**。`renv/activate.R` は追跡されているため全ジョブが checkout し、リポジトリ直下で R が起動すると `.Rprofile` 経由で renv が有効化されて `.libPaths()` が空のプロジェクトライブラリに向く。これを止めているのが env の **`RENV_CONFIG_AUTOLOADER_ENABLED: FALSE`** で、**消すと 6 ジョブすべてが黙って renv 経路に移る**
+- `renv` — `renv.lock` が記録する R 版 1 つで restore し、`renv::status()` の同期を fail-loud で確かめてから `R CMD check` を回す（新しい checkout に座った人に対して repo が負う契約）。**`RENV_CONFIG_AUTOLOADER_ENABLED` を設定しない**のが正しい。CRAN から外れた `ensurer` / `zipangu` が今も解決できるかを試すのはこのジョブだけ
+- `renv-update` — 週 1 の lockfile 更新 PR。**`Sys.unsetenv("RENV_CONFIG_REPOS_OVERRIDE")` と `options(repos)` の CRAN 固定を両方置いてある**（2026-09-05）。ランナーは Posit Package Manager を向いており、そのままだと lockfile 先頭のリポジトリ URL が動く `latest` を指す（PR #5 でこれが混入した）。**片方だけでは効かない** — `use-public-rspm: true` が `RENV_CONFIG_REPOS_OVERRIDE` を立て、renv は `options(repos)` よりそちらを優先する（`uribo/renv-update-smoke` の run 33952584392 で実測）。**直せるのは URL だけ。** 各パッケージの `Repository` はインストール元が刻まれ、pak は `options(repos)` にも `use-public-rspm` にも関係なく P3M の Linux バイナリを取るので、このジョブが更新したパッケージには P3M の値が入る。しかもその表記は**粘着的**で、版が変わるまで残る。**書き換えるステップを足さない**（restore はこのフィールドに依存しない）。lockfile の健全性は**先頭の URL が CRAN であること**で見る。**リポジトリ設定「Allow GitHub Actions to create and approve pull requests」に依存する**（2026-09-04 に有効化済み）。無効に戻すと `gh pr create` が落ちるが、エラーは設定名を言わないので週 1 で赤くなるだけの症状になる
+- `air-format` — `air format . --check`。`R tests` に狭めると `data-raw/` のドリフトを見逃す
+
+## 構成
+
+- `R/read_moe_wbgt.R` — 旧 CSV サービスの入口。`read_moe_wbgt()` が URL 組み立て（`moe_wbgt_request_url()`）とパース（`parse_moe_wbgt_csv()`）を束ねる
+- `R/moe_alert.R` — 熱中症警戒アラート発表実績のスクレイピング（`read_moe_alert()`）と wide → long 変換（`alert_to_long()`）
+- `R/guides.R` — WBGT 値 → 日常生活の指針（`wbgt_guideline()`）
+- `R/moewbgt-package.R` — パッケージレベルの roxygen（`"_PACKAGE"`）と `utils::globalVariables()`。**副作用を持たせない**
+- `man/` — roxygen2 の生成物。**直接編集しない**（`roxygenise()` で再生成する）
+- `data-raw/wbgt_stations.R` — 直接配布の地点マスタ CSV から `data/wbgt_stations.rda` を作る導出スクリプト。`file.exists()` ガードと sha256 照合（不一致で `stop()`）を持ち、行数・稼働中 841・実測 49／47・緯度経度の範囲・旧 841 地点の包含を全て fail-loud で守る。**ガードを外さない**
+- `data-raw/moe_wbgt_stations.R` — 提供サービスマニュアル PDF から地点マスタを抽出する旧導出スクリプト（上流 PDF は 403 で、手元に PDF がある場合の経路）。出力先は `inst/extdata/`。各ブロックの `file.exists()` ガードにより、**既にあるファイルは再実行しても上書きされない**（凍結バイトの保護はこのガードに依存している。外さない）。2020 年版の生成経路は記録されていない（PROVENANCE「元データの出自」）
+- `data-raw/survey_tokyo2020.R` — オリパラ暑熱環境測定事業の資料取得。導出パイプラインの一部ではない
+- `data/` — `usethis::use_data()` が書く `.rda`（`wbgt_stations`、`wbgt_pref_codes`）。**手で編集せず `data-raw/` のスクリプトで再生成する**（どちらも `overwrite = FALSE` なので、作り直すときは意図的に消す）
+- `renv.lock` — 開発環境の固定（`snapshot.type = "implicit"`）。**手で編集しない**（`renv::snapshot()` で再生成する）。`renv/settings.json` と `renv/activate.R` も追跡対象で、`renv/library/` 等は `renv/.gitignore` が除外する
+- `inst/extdata/` — 環境省が直接配布する地点マスタ（`wbgt_point_master-20260515.csv`、865 行 × 18 列。`data/wbgt_stations.rda` の導出元）と、PDF 由来の年度別マスタ（`wbgt_stations*.csv`、840〜841 行）・都道府県ローマ字表（`wbgt_observe*.csv`、47 行）。**`wbgt_observe*` は実況値ではない**（名前と中身が食い違っている。PROVENANCE 問題 3）。**新しいコードは `wbgt_stations` データセットを使う**（年度別 CSV は再取得不能なスナップショットとして残してあるだけ）
+
+### URL 体系（旧 CSV サービス）
+
+`moe_wbgt_request_url()` はパスのプレフィックスで系統を分ける。ソース中のコメントが対応表を持っているので消さない。
+
+| プレフィックス | 内容 |
+| --- | --- |
+| `prev15WG/dl/` | 予測値 |
+| `est15WG/dl/` | 実況値（当年度） |
+| `mntr/dl/` | 実測地点別（11 地点、`station` 引数の大文字ローマ字名） |
+| `mntr/final/{year}/` | 過去年度の確定値 |
+
+分岐は `type` × どの引数が `NULL` でないか、で決まる。**どの条件にも当たらないと関数は暗黙に `NULL` を返す**（`else` 節が無い）。ここを触るときは jpops と同様に末尾へ `else` を置き、想定外の入力で黙って `NULL` を返さないようにする。
+
+`parse_moe_wbgt_csv()` の `file_type` は仕様書のファイル種別（`1-A`〜`2-D`）に対応する。`2-A` と `2-D` は引数が `NULL` のときファイル名から地点を復元するので、URL でもローカルパスでも動く。**2026 年度もこのパス体系は同一**（2026-09-05 に 5 分岐すべて end-to-end で確認。PROVENANCE 問題 5 は解消）。
+
+### 単位の規約（実測で決着・2026-09-03）
+
+**2 つのエンドポイントで単位が違う。**仕様書はどちらの単位も書いていないので、生きた API に照会して確定させた（根拠は PROVENANCE 問題 4）。
+
+| エンドポイント | フィールド | 実際の値 | 意味 |
+| --- | --- | --- | --- |
+| `getSurveyData` | `wbgt_WO` / `wbgt_Tw` / `wbgt_Tg` / `wbgt_WI` | `"21.9"` | **摂氏の小数**（`wbgt_WI` だけ品質情報 0〜4 で `"4.0"` の形） |
+| `getForecastData` | `forecast_val` | `"220"` | **摂氏 ×10 の整数**（220 = 22.0 ℃） |
+
+**クライアントは換算しない。**上流のキー名（`forecast_val` / `wbgt_WO` / …）のまま `numeric` で返し、単位はドキュメントで伝える（キー名を `wbgt` に変えると「摂氏である」という主張になってしまうため。TODO #4 の設計で決着）。**roxygen に「単位は未確定」と書かない** — 上の表のとおり確定している。
+
+仕様書は両者を「数値」と書いているが、**JSON では文字列で返る**（`wbgt_no` / `wbgt_class` / `area_cd` / `pref_cd` / `flag` だけが整数）。パース時に型を仕様書の記載から決めない。
+
+旧 CSV サービスも同じ規約（2026-09-05 実測）。`parse_moe_wbgt_csv(file_type = "1-A")` が読む予測値 CSV は**摂氏 ×10 の整数**（2026-09-05 15:00 の 44132 が `240`）、実況値 CSV は**摂氏の小数**（同 09-01 01:00 が `21.7`）。どちらも換算しない。
+
+## コーディング規約
+
+- パイプは `|>`。`Depends: R (>= 4.1.0)`
+- フォーマッタは air（上記）。変数名・列名は英語のみ、散文は日本語でよい
+- **`R/` の日本語文字列リテラルは Unicode エスケープで書く**（`"危険"` ではなく `"\u5371\u967a"` の形）。R CMD check の非 ASCII 警告を避けるため。**現在 `R/` に生の日本語リテラルは無い**（残る非 ASCII は `R/read_moe_wbgt.R` のコメントだけで、コメントは check の対象外）。新しく足すときも同じ形で書く。`data-raw/` は `.Rbuildignore` されるので生のままでよい
+- **roxygen の散文に日本語を書かない。** `.Rd` では `\u5371\u967a` が escape として解釈されず literal に出るため、エスケープ回避と可読性が両立しない。英語で書く
+- **データマスキング／tidyselect で参照する列名は `R/moewbgt-package.R` の `utils::globalVariables()` に足す**（各関数冒頭の `col <- NULL` 方式は採らない。jpops は NULL 代入、kumagusu は globalVariables で流儀が割れているが、このパッケージは後者に寄せて 1 か所に集める）。裸の tidyselect ヘルパーは `tidyselect::contains()` のように修飾して、globalVariables では隠さない
+- テストの期待値は実装側の定数を参照せず Unicode エスケープで直書きする。実装と同じ転記ミスを共有させないため（kumagusu / jpops と同じ規約）
+- ユーザー向け関数はエクスポートし roxygen2 ドキュメントを書く。内部関数には書かない
+- **`R/moe_alert.R` の `@importFrom rvest read_html` を「`rvest::` があるから冗長」と消さない。** `.onLoad()` が `read_moe_alert` を memoise 版へ再束縛するため、インストール後の名前空間を見る R CMD check からは `rvest::` の呼び出しが見えなくなり、消すと「All declared Imports should be used」の NOTE が復活する（2026-09-03 に再束縛を外して確認済み）。理由は当該行の直上コメントにも書いてある
+- 取得処理を `purrr::safely()` や `tryCatch()` で包んで失敗を握り潰さない。fail-loud のまま保つ
+- `dplyr::select()` / `rename()` の位置指定（`dplyr::select(!2)`、`seq.int(2, ncol(df) - 1)` など）は上流 CSV のヘッダーが年度・種別で揺れるための意図的なもの。列名ベースに「直さない」
+
+## エージェント環境
+
+- `.claude/settings.json` — env（`R_ENVIRON_USER` とロケール）、資格情報ファイルの読み書き拒否、air の PostToolUse hook、renv の 2 つの hook（PreToolUse で `renv.lock` を含むコミットを止めてパッケージ差分を見せる／Stop で `renv::status()` のドリフト検出）。**意図的に git 追跡している**（`.claude/settings.local.json` は追跡しない）
+- `.claude/skills/`、`.agents/skills/` — conf-macos の `deploy/manifest.tsv` で宣言的に配備した symlink（`r-modern-tidyverse`, `r-rlang-programming`）。手動 `ln -s` はしない。中身は gitignore され、`.gitignore` 自身だけが追跡される
+- `.codex/config.toml` — Codex の sandbox・環境変数ポリシー
+- 資格情報: プロジェクトの環境ファイル・`.env`・認証用 JSON・秘密鍵など、秘密を保存するためのファイルを読まない・編集しない・出力しない・検索しない・要約しない。認証付きのアクセスが要るときは、必要な環境変数を説明して許可を得てから有効にし、値をプロンプト・ログ・コマンド出力・コミットに含めない
+- `AGENTS.md`（本ファイル）— 全エージェント共通の正典。`CLAUDE.md` は `@AGENTS.md` と Claude Code 固有の設定（hook の説明）だけ
+- `tools/check-instructions-size.sh` と `.githooks/pre-commit` — 本ファイルが 32 KiB を超えるコミットを止める（clone ごとに `git config core.hooksPath .githooks`）
+- `memory/project-status.md` の「引き継ぎ（HANDOFF）」欄 — Claude ↔ Codex の引き継ぎはこの欄を経由する。方針を決めた時・試行を捨てた時・検証を実行した時・セッションを終える時に更新する
+  - 作業を始めるときはこの欄を読み、`git status` と `git diff` を確認する。既存の変更は消さない。記録済みの判断は主張として扱い、コードとテスト結果で確かめてから採用する。作業を終える・止めるときもこの欄を更新する
+- `TODO.md` — 未決着の判断と次に行う作業。GitHub Issue はまだ使っていない
+- `.Rprofile` — renv の config（`auto.snapshot` / `pak.enabled` / `dependency.errors = "fatal"`）を**起動前**に置き、`renv/activate.R` を source し、そのあとでロケールを固定する。**この順序を入れ替えない**（`renv/activate.R` がロケールをシステム既定に戻すため、前に書くと無警告で無効化される）。テンプレートと違い `TZ` は**固定しない** — このファイルの環境変数は `R CMD check` の子プロセスに継承されるので、固定すると CRAN の UTC マシンが暴く時刻依存を手元で隠すことになる
+- `_dependencies.R` — **source されない**。コードスキャンからは見えない開発ツール（roxygen2 / rcmdcheck）を renv に見せるためだけのファイル。`.Rbuildignore` 済み。DESCRIPTION の `Suggests` に入れないのは、そこが「利用者に必要なもの」の宣言であり、6 ジョブの `R-CMD-check` が全ランナーに入れる対象だから
+
+`R_ENVIRON_USER=/dev/null` は資格情報を子プロセスに渡さないための設定だが、R はプロジェクト直下の環境ファイルを *user* 側として扱うため**プロジェクトの分ごと無効化する**。ロケールの固定をそこに頼れないので、`LC_COLLATE=C` / `LC_TIME=C` は `.claude/settings.json` と `.codex/config.toml` の両方に直接書いてある。**`LC_ALL` に統合しない**（`LC_CTYPE` まで上書きされ、`prefecture == "沖縄県"` のような比較が無警告で行を落とす）。
+
+## コミット
+
+Conventional Commits に従う（`/commit-msg` スキル参照）。`Co-Authored-By:` フッタは付けない。ステージングは `git add -u` かパス明示で行う（`git add -A` は使わない）。
