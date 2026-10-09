@@ -894,7 +894,7 @@
     },
     "diffobj": {
       "Package": "diffobj",
-      "Version": "0.3.8",
+      "Version": "0.3.9",
       "Source": "Repository",
       "Type": "Package",
       "Title": "Diffs for R Objects",
@@ -1070,10 +1070,12 @@
       "URL": "https://github.com/smbache/ensurer",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
-      "RemoteUsername": "smbache",
       "RemoteRepo": "ensurer",
+      "RemoteUsername": "smbache",
+      "RemotePkgRef": "smbache/ensurer@feb1defe557cca6b5366f029cbbf3da757d7fe0d",
       "RemoteRef": "feb1defe557cca6b5366f029cbbf3da757d7fe0d",
-      "RemoteSha": "feb1defe557cca6b5366f029cbbf3da757d7fe0d"
+      "RemoteSha": "feb1defe557cca6b5366f029cbbf3da757d7fe0d",
+      "NeedsCompilation": "no"
     },
     "evaluate": {
       "Package": "evaluate",
@@ -3162,7 +3164,7 @@
     },
     "selectr": {
       "Package": "selectr",
-      "Version": "0.6-0",
+      "Version": "0.8-0",
       "Source": "Repository",
       "Type": "Package",
       "Title": "Translate CSS Selectors to XPath Expressions",
@@ -3170,19 +3172,18 @@
       "License": "BSD_3_clause + file LICENCE",
       "Encoding": "UTF-8",
       "Depends": [
-        "R (>= 3.3)"
-      ],
-      "Imports": [
-        "R6"
+        "R (>= 3.6)"
       ],
       "Suggests": [
-        "testthat",
+        "testthat (>= 3.0.0)",
         "XML",
         "xml2"
       ],
+      "Config/testthat/edition": "3",
       "URL": "https://sjp.co.nz/projects/selectr/",
       "BugReports": "https://github.com/sjp/selectr/issues",
-      "Description": "Translates a CSS selector into an equivalent XPath expression. This allows us to use CSS selectors when working with the XML package as it can only evaluate XPath expressions. Also provided are convenience functions useful for using CSS selectors on XML nodes. This package is a port of the Python package 'cssselect' (<https://cssselect.readthedocs.io/>).",
+      "Language": "en-GB",
+      "Description": "Translates a CSS selector into an equivalent XPath expression. This allows us to use CSS selectors when working with the 'XML' and 'xml2' packages, which can only evaluate XPath expressions. Also provided are convenience functions for querying XML and HTML documents with CSS selectors. This package was originally a port of the Python package 'cssselect' (<https://cssselect.readthedocs.io/>).",
       "NeedsCompilation": "no",
       "Author": "Simon Potter [aut, trl, cre], Simon Sapin [aut], Ian Bicking [aut]",
       "Maintainer": "Simon Potter <simon@sjp.co.nz>",
@@ -4307,14 +4308,16 @@
       "LazyData": "true",
       "Roxygen": "list(markdown = TRUE)",
       "RoxygenNote": "7.3.3",
-      "Author": "Shinya Uryu [aut, cre] (ORCID: <https://orcid.org/0000-0002-0493-6186>), Hiroaki Yutani [ctb] (ORCID: <https://orcid.org/0000-0002-3385-7233>), Kazuhiro Maeda [ctb], Mao Kobayashi [ctb], Akiru Kato [ctb]",
-      "Maintainer": "Shinya Uryu <suika1127@gmail.com>",
       "RemoteType": "github",
       "RemoteHost": "api.github.com",
-      "RemoteUsername": "uribo",
       "RemoteRepo": "zipangu",
+      "RemoteUsername": "uribo",
+      "RemotePkgRef": "uribo/zipangu@c5c58dd7dde3c6dc9271ace47da0469febdb5d1c",
       "RemoteRef": "c5c58dd7dde3c6dc9271ace47da0469febdb5d1c",
-      "RemoteSha": "c5c58dd7dde3c6dc9271ace47da0469febdb5d1c"
+      "RemoteSha": "c5c58dd7dde3c6dc9271ace47da0469febdb5d1c",
+      "NeedsCompilation": "no",
+      "Author": "Shinya Uryu [aut, cre] (ORCID: <https://orcid.org/0000-0002-0493-6186>), Hiroaki Yutani [ctb] (ORCID: <https://orcid.org/0000-0002-3385-7233>), Kazuhiro Maeda [ctb], Mao Kobayashi [ctb], Akiru Kato [ctb]",
+      "Maintainer": "Shinya Uryu <suika1127@gmail.com>"
     }
   }
 }
